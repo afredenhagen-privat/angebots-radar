@@ -1,10 +1,6 @@
 // pipeline/telegram.js
 const eur = (n) => Number(n).toFixed(2).replace('.', ',')
 
-export function escapeMd(s) {
-  return String(s).replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1')
-}
-
 export function formatAlert(watch, offer) {
   const priceUnit = offer.unit ? `/${offer.unit}` : ''
   const price = offer.price != null ? `${eur(offer.price)} €${priceUnit}` : 'Preis?'
@@ -14,10 +10,10 @@ export function formatAlert(watch, offer) {
     const d = offer.valid_to
     until = ` – gültig bis ${d.slice(8, 10)}.${d.slice(5, 7)}.`
   }
-  const title = escapeMd(offer.product ?? watch.term)
-  const brand = offer.brand ? ` \\(${escapeMd(offer.brand)}\\)` : ''
-  const retailer = escapeMd(offer.retailer ?? '')
-  return `🛒 *${title}*${brand}\n${retailer}: ${price}${was}${until}`
+  const title = offer.product ?? watch.term
+  const brand = offer.brand ? ` (${offer.brand})` : ''
+  const retailer = offer.retailer ?? ''
+  return `🛒 ${title}${brand}\n${retailer}: ${price}${was}${until}`
 }
 
 // pipeline/telegram.js  (an die bestehende Datei anhängen)
@@ -27,7 +23,7 @@ export async function sendMessage(token, chatId, text) {
   const res = await fetch(`${API(token)}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
   if (!res.ok) throw new Error(`telegram sendMessage ${res.status}: ${await res.text()}`)
 }
