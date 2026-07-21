@@ -1546,3 +1546,16 @@ git push -u origin main
 **Typ-Konsistenz:** DB-Feldnamen (`old_price`, `valid_to`, `target_price`, `chat_id`) identisch in `normalize.js`, `schema.sql`, `matching.js`, Stores und Views; Store-Methoden (`wl.add/remove/setTarget/subscribe/load`, `offers.load/forTerm`) konsistent verwendet.
 
 **Bekannte MVP-Vereinfachung:** Task 6.7 nennt Icons als abzulegende Assets (keine Generierung im Plan) — bewusst, da reine Design-Assets.
+
+---
+
+## Umsetzungs-Anmerkungen (Korrekturen während der Reviews)
+
+Diese Punkte wurden bei der Implementierung/Review gegenüber dem ursprünglichen Plan-Code angepasst; die Commits auf `feat/mvp-implementation` sind maßgeblich:
+
+1. **Telegram Klartext statt MarkdownV2** — der ursprüngliche `formatAlert`/`sendMessage` nutzte MarkdownV2 mit inkonsistentem Escaping (unescapte `(`, `)`, `.` → Telegram HTTP 400). Umgestellt auf Klartext ohne `parse_mode`, `escapeMd` entfernt. (Plan oben bereits korrigiert.)
+2. **`run.js` Robustheit** — (a) `alerts_sent` wird nur noch geschrieben, wenn der Versand tatsächlich zugestellt wurde (sonst gingen Treffer dauerhaft verloren); (b) Supabase-Loads prüfen `error` und nutzen `?? []` statt Destructuring-Defaults (bei Fehler ist `data` null → Crash); (c) `alerts_sent`-Upsert mit `ignoreDuplicates`; (d) `fetched_at` wird bei jedem Upsert gesetzt (damit „zuletzt aktualisiert" stimmt); (e) 456-Rate-Limit-Backoff mit Abbruch nach 5 Wiederholungen; (f) JSON-Import `with` statt `assert`.
+3. **Frontend-Feinschliff** — (a) Realtime-Channel wird nur einmal abonniert und bei `onUnmounted` via `removeChannel` abgebaut (kein Stacking); (b) `onAuthStateChange` nur einmal registriert; (c) Logout navigiert explizit nach `/login`.
+4. **CI Node 22** — beide Workflows nutzen Node 22 (nicht 20), da `@supabase/supabase-js` Node ≥22 verlangt.
+5. **`package-lock.json` committed** — erforderlich für `npm ci` in der CI.
+6. **`image_id = offer.id` ist beabsichtigt** — die Marktguru-CDN-Bild-URL nutzt genau die Offer-ID.
