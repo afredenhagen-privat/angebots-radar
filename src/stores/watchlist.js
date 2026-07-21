@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '../supabase.js'
 
+let channel = null
+
 export const useWatchlist = defineStore('watchlist', () => {
   const items = ref([])
 
@@ -13,9 +15,13 @@ export const useWatchlist = defineStore('watchlist', () => {
   }
 
   function subscribe() {
-    supabase.channel('watchlist-changes')
+    if (channel) return
+    channel = supabase.channel('watchlist-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watchlist' }, load)
       .subscribe()
+  }
+  function unsubscribe() {
+    if (channel) { supabase.removeChannel(channel); channel = null }
   }
 
   async function add(term, targetPrice = null) {
@@ -31,5 +37,5 @@ export const useWatchlist = defineStore('watchlist', () => {
     if (error) throw error
   }
 
-  return { items, load, subscribe, add, remove, setTarget }
+  return { items, load, subscribe, unsubscribe, add, remove, setTarget }
 })

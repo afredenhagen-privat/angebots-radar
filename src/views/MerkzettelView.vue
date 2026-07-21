@@ -1,6 +1,6 @@
 <!-- src/views/MerkzettelView.vue -->
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useWatchlist } from '../stores/watchlist.js'
 import { useOffers } from '../stores/offers.js'
 import OfferCard from '../components/OfferCard.vue'
@@ -14,6 +14,7 @@ onMounted(async () => {
   await Promise.all([wl.load(), offers.load()])
   wl.subscribe()
 })
+onUnmounted(() => wl.unsubscribe())
 
 const hitsByItem = computed(() =>
   wl.items.map((it) => ({ it, hits: offers.forTerm(it.term, it.target_price) })))

@@ -3,13 +3,18 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '../supabase.js'
 
+let initialized = false
+
 export const useAuth = defineStore('auth', () => {
   const session = ref(null)
 
   async function init() {
     const { data } = await supabase.auth.getSession()
     session.value = data.session
-    supabase.auth.onAuthStateChange((_e, s) => { session.value = s })
+    if (!initialized) {
+      initialized = true
+      supabase.auth.onAuthStateChange((_e, s) => { session.value = s })
+    }
   }
   async function login(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

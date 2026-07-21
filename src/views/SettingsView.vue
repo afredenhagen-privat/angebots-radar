@@ -1,17 +1,21 @@
 <!-- src/views/SettingsView.vue -->
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { supabase } from '../supabase.js'
 import { useAuth } from '../stores/auth.js'
 import NavBar from '../components/NavBar.vue'
 
 const auth = useAuth()
+const router = useRouter()
 const lastUpdate = ref(null)
 
 onMounted(async () => {
   const { data } = await supabase.from('offers').select('fetched_at').order('fetched_at', { ascending: false }).limit(1)
   lastUpdate.value = data?.[0]?.fetched_at ?? null
 })
+
+async function logout() { await auth.logout(); router.push('/login') }
 </script>
 
 <template>
@@ -25,7 +29,7 @@ onMounted(async () => {
       <p class="font-semibold mb-1">Telegram-Wecker</p>
       <p class="text-sm text-slate-500">Öffnet den Bot und sendet einmal <code>/start</code>, damit ihr Benachrichtigungen bekommt.</p>
     </div>
-    <button class="text-red-500" @click="auth.logout()">Abmelden</button>
+    <button class="text-red-500" @click="logout">Abmelden</button>
     <NavBar />
   </div>
 </template>
