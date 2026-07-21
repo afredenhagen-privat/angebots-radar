@@ -1,7 +1,7 @@
 // tests/pipeline/normalize.test.js
 import { describe, it, expect } from 'vitest'
 import { normalizeOffer } from '../../pipeline/marktguru/normalize.js'
-import raw from './fixtures/offer.json' assert { type: 'json' }
+import raw from './fixtures/offer.json' with { type: 'json' }
 
 describe('normalizeOffer', () => {
   it('mappt die relevanten Felder in unser DB-Schema', () => {
