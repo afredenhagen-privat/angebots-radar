@@ -1,0 +1,12 @@
+{
+  "id": 24087872,
+  "product": { "name": "Feine Butter" },
+  "brand": { "name": "Meggle" },
+  "description": "Feine Butter",
+  "price": 1.39,
+  "oldPrice": 1.79,
+  "referencePrice": 1.39,
+  "unit": { "shortName": "kg", "name": "Kilogramm" },
+  "advertisers": [{ "uniqueName": "lidl", "name": "Lidl" }],
+  "validityDates": [{ "from": "2026-07-22T22:00:00Z", "to": "2026-07-25T21:59:00Z" }]
+}
