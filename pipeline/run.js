@@ -54,9 +54,14 @@ async function main() {
     if (error) throw error
   }
 
-  // 5. Abgelaufene Angebote entfernen
-  const { error: delErr } = await admin.from('offers').delete().lt('valid_to', new Date().toISOString())
-  if (delErr) console.warn(`expired cleanup fail: ${delErr.message}`)
+  // 5. Historie BEHALTEN. Abgelaufene Angebote bleiben stehen — sie *sind* die
+  //    Preishistorie (typischer Preis / Tiefpreis / Preisverlauf). "Aktuell im
+  //    Angebot" ist nur noch die Abfrage valid_to >= jetzt.
+  //    Weggeräumt wird ausschliesslich Uraltes, damit die Tabelle nicht ewig waechst.
+  const PRUNE_DAYS = 730
+  const cutoff = new Date(Date.now() - PRUNE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const { error: delErr } = await admin.from('offers').delete().lt('valid_to', cutoff)
+  if (delErr) console.warn(`history prune fail: ${delErr.message}`)
 
   // 6. Telegram-Empfänger aktualisieren
   if (TOKEN) {

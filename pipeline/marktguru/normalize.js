@@ -1,12 +1,18 @@
 // pipeline/marktguru/normalize.js
+import { productKey } from '../../shared/productKey.js'
+
 export function normalizeOffer(raw, { zipCode, term }) {
   const advertiser = raw.advertisers?.[0]
   const validity = raw.validityDates?.[0]
+  const product = raw.product?.name ?? raw.description ?? null
+  const brand = raw.brand?.name ?? null
   return {
     id: String(raw.id),
     retailer: advertiser?.name ?? null,
-    product: raw.product?.name ?? raw.description ?? null,
-    brand: raw.brand?.name ?? null,
+    product,
+    brand,
+    // Gruppierungsschlüssel für die Preisstatistik (typischer Preis / Tiefpreis).
+    product_key: productKey(brand, product),
     price: raw.price ?? null,
     old_price: raw.oldPrice ?? null,
     reference_price: raw.referencePrice ?? null,

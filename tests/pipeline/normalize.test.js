@@ -11,6 +11,7 @@ describe('normalizeOffer', () => {
       retailer: 'Lidl',
       product: 'Feine Butter',
       brand: 'Meggle',
+      product_key: 'meggle|feine butter',
       price: 1.39,
       old_price: 1.79,
       reference_price: 1.39,
@@ -28,5 +29,6 @@ describe('normalizeOffer', () => {
     expect(n.id).toBe('5')
     expect(n.retailer).toBeNull()
     expect(n.product).toBeNull()
+    expect(n.product_key).toBeNull()
   })
 })

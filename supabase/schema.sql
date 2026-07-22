@@ -15,8 +15,15 @@ create table if not exists offers (
   zip_code text,
   image_id text,
   category text,
+  -- Gruppierungsschlüssel für die Preisstatistik (siehe shared/productKey.js).
+  product_key text,
   fetched_at timestamptz not null default now()
 );
+
+-- offers ist die Preis-HISTORIE: abgelaufene Angebote bleiben stehen und
+-- werden erst nach 2 Jahren weggeräumt. "Aktuell im Angebot" = valid_to >= now().
+create index if not exists offers_product_key_idx on offers (product_key);
+create index if not exists offers_valid_to_idx on offers (valid_to);
 
 create table if not exists watchlist (
   id uuid primary key default gen_random_uuid(),
@@ -58,3 +65,28 @@ create policy "household read subs" on telegram_subscribers
 
 -- Realtime für die Merkliste aktivieren.
 alter publication supabase_realtime add table watchlist;
+
+-- Preisstatistik je Produkt über die letzten 365 Tage.
+-- Speist Suche, Produkt-Detail und die Suchhilfe beim Hinzufügen.
+-- security_invoker => die RLS-Regeln von offers greifen weiterhin.
+create or replace view product_stats
+with (security_invoker = on) as
+select
+  o.product_key,
+  (array_agg(o.product order by o.valid_from desc nulls last))[1] as product,
+  (array_agg(o.brand   order by o.valid_from desc nulls last))[1] as brand,
+  count(*)::int                                          as observations,
+  min(o.valid_from)                                      as first_seen,
+  max(o.valid_to)                                        as last_valid_to,
+  min(o.price)                                           as lowest_price,
+  percentile_cont(0.5) within group (order by o.price)     as typical_price,
+  percentile_cont(0.5) within group (order by o.old_price) as regular_price,
+  bool_or(o.valid_to >= now())                           as currently_active,
+  min(o.price) filter (where o.valid_to >= now())        as current_price
+from offers o
+where o.product_key is not null
+  and o.price is not null
+  and o.valid_from >= now() - interval '365 days'
+group by o.product_key;
+
+grant select on product_stats to authenticated;
