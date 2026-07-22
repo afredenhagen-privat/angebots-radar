@@ -1,12 +1,17 @@
 <!-- src/components/ProductPicker.vue -->
 <script setup>
-import { onUnmounted, ref } from 'vue'
+import { nextTick, onUnmounted, ref } from 'vue'
 import { useProducts } from '../stores/products.js'
 import { datum } from '../lib/format.js'
 
 /**
  * Sucheingabe mit Vorschlägen aus dem Produktkatalog.
  * Wird zweimal genutzt: neuen Korb anlegen und Produkt in einen Korb legen.
+ *
+ * Die Treffer stehen bewusst IM FLUSS statt als überlappende Liste: In einer
+ * Karte mit overflow-hidden würde eine überlappende Liste abgeschnitten, und
+ * am unteren Bildschirmrand verdeckt sie die Tastatur. So wächst stattdessen
+ * die Karte und die Seite scrollt normal.
  */
 defineProps({
   placeholder: { type: String, default: 'Produkt suchen' },
@@ -18,6 +23,7 @@ const products = useProducts()
 const query = ref('')
 const suggestions = ref([])
 const open = ref(false)
+const listEl = ref(null)
 let timer = null
 
 onUnmounted(() => clearTimeout(timer))
@@ -33,6 +39,8 @@ function onInput() {
   timer = setTimeout(async () => {
     suggestions.value = (await products.search(query.value)).slice(0, 8)
     open.value = true
+    await nextTick()
+    listEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, 300)
 }
 
@@ -45,7 +53,7 @@ function pick(s) {
 </script>
 
 <template>
-  <div class="relative">
+  <div>
     <input
       v-model="query"
       :placeholder="placeholder"
@@ -54,18 +62,24 @@ function pick(s) {
       @input="onInput"
     />
 
-    <ul v-if="open && suggestions.length" class="absolute z-20 left-0 right-0 mt-1 karte shadow-lg overflow-hidden">
+    <ul v-if="open && suggestions.length" ref="listEl" class="mt-1 karte divide-y divide-hair overflow-hidden">
       <li v-for="s in suggestions" :key="s.product_key">
         <button
           type="button"
-          class="w-full text-left px-3 py-2 border-b border-hair last:border-b-0 hover:bg-paper focus:bg-paper outline-none"
+          class="w-full flex items-center gap-3 text-left px-3 py-2.5 hover:bg-paper focus:bg-paper outline-none"
           @click="pick(s)"
         >
-          <span class="font-medium">{{ s.product }}</span>
-          <span v-if="s.brand" class="text-muted"> {{ s.brand }}</span>
-          <span class="block text-[11px]" :class="s.currently_active ? 'text-signal' : 'text-muted'">
-            {{ s.currently_active ? 'gerade im Angebot' : `zuletzt ${datum(s.last_valid_to)}` }}
+          <span class="flex-1 min-w-0">
+            <span class="block font-medium truncate">{{ s.product }}</span>
+            <span class="block text-xs truncate">
+              <span v-if="s.brand" class="text-muted">{{ s.brand }}</span>
+              <span v-if="s.brand" class="text-hair"> · </span>
+              <span :class="s.currently_active ? 'text-signal font-semibold' : 'text-muted'">
+                {{ s.currently_active ? 'im Angebot' : `zuletzt ${datum(s.last_valid_to)}` }}
+              </span>
+            </span>
           </span>
+          <span class="shrink-0 text-deep font-bold text-lg leading-none" aria-hidden="true">+</span>
         </button>
       </li>
     </ul>

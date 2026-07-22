@@ -154,12 +154,12 @@ const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
         <template v-if="k.keys.length">
           <div v-for="p in k.produkte" :key="p.key" class="space-y-1">
             <div class="flex items-center justify-between gap-2">
-              <span class="text-sm truncate">
-                {{ nameVon(p) }}
-                <span class="text-muted">{{ markeVon(p) }}</span>
+              <span class="text-sm min-w-0 truncate">
+                <span class="font-medium">{{ nameVon(p) }}</span>
+                <span v-if="markeVon(p)" class="text-muted"> · {{ markeVon(p) }}</span>
               </span>
               <button
-                class="text-xs text-muted hover:text-signal shrink-0"
+                class="text-xs text-muted underline hover:text-signal shrink-0"
                 :aria-label="`${nameVon(p)} aus dem Korb nehmen`"
                 @click="wl.removeProduct(k.it.id, p.key)"
               >entfernen</button>
