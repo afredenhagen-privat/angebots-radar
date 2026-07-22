@@ -3,6 +3,7 @@ import { admin } from './supabaseAdmin.js'
 import { fetchKeys, searchOffers, sleep } from './marktguru/client.js'
 import { normalizeOffer } from './marktguru/normalize.js'
 import { offerMatchesEntry } from '../shared/matching.js'
+import { dedupeOffers } from '../shared/dedupe.js'
 import { formatDigest, sendMessage, harvestChatIds } from './telegram.js'
 import { CATEGORIES } from './categories.js'
 
@@ -50,8 +51,12 @@ async function main() {
     }
   }
   const nowIso = new Date().toISOString()
-  const offers = [...offersById.values()].map((o) => ({ ...o, fetched_at: nowIso }))
-  console.log(`Angebote gesammelt: ${offers.length}`)
+  // Erst über die ID entdoppeln (dasselbe Angebot bei mehreren Suchbegriffen),
+  // dann inhaltlich (dasselbe Angebot je abgefragter PLZ mit eigener ID).
+  const roh = [...offersById.values()]
+  const offers = dedupeOffers(roh).map((o) => ({ ...o, fetched_at: nowIso }))
+  console.log(`Angebote gesammelt: ${offers.length}` +
+    (roh.length !== offers.length ? ` (${roh.length - offers.length} PLZ-Dubletten entfernt)` : ''))
 
   // 4. Upsert in offers
   if (offers.length) {

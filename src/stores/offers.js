@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '../supabase.js'
 import { offerMatchesEntry } from '../../shared/matching.js'
+import { dedupeOffers } from '../../shared/dedupe.js'
 
 const BROWSE_LIMIT = 1000
 
@@ -59,7 +60,9 @@ export const useOffers = defineStore('offers', () => {
     }
 
     error.value = null
-    items.value = [...acc.values()]
+    // Auch anzeigeseitig entdoppeln: Dubletten, die vor dem Pipeline-Fix in
+    // die Datenbank gelaufen sind, verschwinden damit sofort.
+    items.value = dedupeOffers([...acc.values()])
   }
 
   /**
@@ -79,7 +82,7 @@ export const useOffers = defineStore('offers', () => {
       throw err
     }
     error.value = null
-    items.value = data ?? []
+    items.value = dedupeOffers(data ?? [])
     gesamt.value = count ?? items.value.length
   }
 
