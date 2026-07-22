@@ -649,10 +649,8 @@ Expected: FAIL — `formatAlert` nicht definiert.
 // pipeline/telegram.js
 const eur = (n) => Number(n).toFixed(2).replace('.', ',')
 
-export function escapeMd(s) {
-  return String(s).replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1')
-}
-
+// Klartext, KEIN MarkdownV2 — vermeidet das Escaping von (, ), . etc.,
+// an dem Telegram-Sends sonst mit HTTP 400 scheitern.
 export function formatAlert(watch, offer) {
   const priceUnit = offer.unit ? `/${offer.unit}` : ''
   const price = offer.price != null ? `${eur(offer.price)} €${priceUnit}` : 'Preis?'
@@ -662,10 +660,10 @@ export function formatAlert(watch, offer) {
     const d = offer.valid_to
     until = ` – gültig bis ${d.slice(8, 10)}.${d.slice(5, 7)}.`
   }
-  const title = escapeMd(offer.product ?? watch.term)
-  const brand = offer.brand ? ` \\(${escapeMd(offer.brand)}\\)` : ''
-  const retailer = escapeMd(offer.retailer ?? '')
-  return `🛒 *${title}*${brand}\n${retailer}: ${escapeMd(price)}${escapeMd(was)}${escapeMd(until)}`
+  const title = offer.product ?? watch.term
+  const brand = offer.brand ? ` (${offer.brand})` : ''
+  const retailer = offer.retailer ?? ''
+  return `🛒 ${title}${brand}\n${retailer}: ${price}${was}${until}`
 }
 ```
 
@@ -698,7 +696,7 @@ export async function sendMessage(token, chatId, text) {
   const res = await fetch(`${API(token)}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
+    body: JSON.stringify({ chat_id: chatId, text }), // Klartext, kein parse_mode
   })
   if (!res.ok) throw new Error(`telegram sendMessage ${res.status}: ${await res.text()}`)
 }
@@ -867,7 +865,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'   # supabase-js verlangt Node >=22
       - run: npm ci
       - run: npm run pipeline
         env:
@@ -1500,7 +1498,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '22' }
       - run: npm ci
       - run: npm run build
         env:
@@ -1548,3 +1546,34 @@ git push -u origin main
 **Typ-Konsistenz:** DB-Feldnamen (`old_price`, `valid_to`, `target_price`, `chat_id`) identisch in `normalize.js`, `schema.sql`, `matching.js`, Stores und Views; Store-Methoden (`wl.add/remove/setTarget/subscribe/load`, `offers.load/forTerm`) konsistent verwendet.
 
 **Bekannte MVP-Vereinfachung:** Task 6.7 nennt Icons als abzulegende Assets (keine Generierung im Plan) — bewusst, da reine Design-Assets.
+
+---
+
+## Umsetzungs-Anmerkungen (Korrekturen während der Reviews)
+
+Diese Punkte wurden bei der Implementierung/Review gegenüber dem ursprünglichen Plan-Code angepasst; die Commits auf `feat/mvp-implementation` sind maßgeblich:
+
+1. **Telegram Klartext statt MarkdownV2** — der ursprüngliche `formatAlert`/`sendMessage` nutzte MarkdownV2 mit inkonsistentem Escaping (unescapte `(`, `)`, `.` → Telegram HTTP 400). Umgestellt auf Klartext ohne `parse_mode`, `escapeMd` entfernt. (Plan oben bereits korrigiert.)
+2. **`run.js` Robustheit** — (a) `alerts_sent` wird nur noch geschrieben, wenn der Versand tatsächlich zugestellt wurde (sonst gingen Treffer dauerhaft verloren); (b) Supabase-Loads prüfen `error` und nutzen `?? []` statt Destructuring-Defaults (bei Fehler ist `data` null → Crash); (c) `alerts_sent`-Upsert mit `ignoreDuplicates`; (d) `fetched_at` wird bei jedem Upsert gesetzt (damit „zuletzt aktualisiert" stimmt); (e) 456-Rate-Limit-Backoff mit Abbruch nach 5 Wiederholungen; (f) JSON-Import `with` statt `assert`.
+3. **Frontend-Feinschliff** — (a) Realtime-Channel wird nur einmal abonniert und bei `onUnmounted` via `removeChannel` abgebaut (kein Stacking); (b) `onAuthStateChange` nur einmal registriert; (c) Logout navigiert explizit nach `/login`.
+4. **CI Node 22** — beide Workflows nutzen Node 22 (nicht 20), da `@supabase/supabase-js` Node ≥22 verlangt.
+5. **`package-lock.json` committed** — erforderlich für `npm ci` in der CI.
+6. **`image_id = offer.id` ist beabsichtigt** — die Marktguru-CDN-Bild-URL nutzt genau die Offer-ID.
+
+### Nachträgliche Änderungen (2026-07-22)
+
+7. **Login auf Magic Link umgestellt** (statt geteiltem Login mit Passwort) — passend zum
+   Schwesterprojekt Vorratsmonster. Betrifft `src/supabase.js`, `src/stores/auth.js`,
+   `src/views/LoginView.vue`. Wichtige Details:
+   - **`flowType: 'pkce'`** im Supabase-Client ist zwingend: Im Standard-Flow käme der Token als
+     `#access_token=...` im Hash zurück und würde mit dem Hash-Router (`#/angebote`) kollidieren.
+     Mit PKCE kommt stattdessen `?code=...` im Query-String.
+   - **`shouldCreateUser: false`** beim `signInWithOtp` + Self-Signup in Supabase abgeschaltet.
+     Ohne das könnte sich jede beliebige E-Mail einloggen und hätte wegen
+     `using (true)` in den RLS-Policies sofort vollen Datenzugriff.
+   - **Redirect-URL** muss in Supabase unter *Authentication → URL Configuration* freigegeben sein.
+   - `LoginView` beobachtet die Session und leitet nach dem Magic-Link-Rücksprung selbst weiter —
+     der Router-Guard allein griffe erst bei der nächsten Navigation.
+8. **Fehler-Alarm im Cron** — `pipeline.yml` hat einen `if: failure()`-Schritt, der bei einem
+   fehlgeschlagenen Lauf eine Telegram-Nachricht an `TELEGRAM_ALERT_CHAT_ID` schickt (optionales
+   Secret; fehlt es, wird der Schritt übersprungen).

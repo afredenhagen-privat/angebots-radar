@@ -20,8 +20,17 @@ wenn die eigenen Wunschprodukte gerade günstig sind.
 
 - Zwei Personen (Verlobtes Paar), ein Haushalt.
 - Zugriff von beiden Smartphones.
-- **Ein geteiltes Haushalts-Login** (eine Mail / ein Passwort). Kein User-Management,
-  kein Rollenmodell — beide sehen und bearbeiten dieselben Daten.
+- **Login per Magic Link** (passwortlos, wie beim Schwesterprojekt Vorratsmonster):
+  Beide melden sich mit der **gemeinsamen E-Mail-Adresse** des Paares an, es gibt also
+  genau **einen** Nutzer. Der wird vorab manuell in Supabase angelegt, Self-Signup ist
+  abgeschaltet. Kein Rollenmodell — die RLS-Regeln geben jedem eingeloggten Nutzer vollen
+  Zugriff, dadurch sehen und bearbeiten beide dieselben Daten.
+  *(Zwei getrennte Nutzer mit je eigener Adresse funktionieren identisch und lassen sich
+  jederzeit ohne Code-Änderung nachrüsten.)*
+
+  > *Geändert am 2026-07-22:* ursprünglich war ein einzelnes geteiltes Haushalts-Login mit
+  > Passwort vorgesehen. Magic Link passt besser (kein Passwort-Teilen, konsistent zu den
+  > anderen privaten PWAs) und macht zwei persönliche Accounts sogar einfacher als einen geteilten.
 
 ## 3. Ziele / Nicht-Ziele
 
@@ -36,7 +45,7 @@ wenn die eigenen Wunschprodukte gerade günstig sind.
 - Web-Push / E-Mail-Wecker (Telegram reicht fürs MVP).
 - Echte GPS-/Standortlogik (feste PLZ genügen).
 - Mehr als ein Haushalt / mandantenfähig.
-- Persönliche Accounts pro Person.
+- Rollen-/Rechtemodell zwischen den beiden Nutzern (beide sehen bewusst alles).
 - Native App (Kotlin/Swift/Flutter).
 
 ## 4. Gesamtarchitektur

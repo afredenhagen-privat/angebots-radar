@@ -1,0 +1,45 @@
+# .github/workflows/pipeline.yml
+name: angebots-pipeline
+on:
+  schedule:
+    - cron: '0 4 * * *'   # täglich 04:00 UTC (~06:00 DE)
+  workflow_dispatch: {}    # manuell auslösbar
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ZIP_CODES: '97204,97070'
+
+      # Schlägt der Lauf fehl, meldet sich der Bot - sonst merkt man wochenlang
+      # nicht, dass keine Angebote mehr kommen. Optional: ohne gesetztes
+      # TELEGRAM_ALERT_CHAT_ID wird der Schritt einfach uebersprungen.
+      - name: Telegram-Alarm bei Fehlschlag
+        if: failure()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$ALERT_CHAT_ID" ]; then
+            echo "TELEGRAM_ALERT_CHAT_ID oder TELEGRAM_BOT_TOKEN fehlt - Alarm uebersprungen."
+            exit 0
+          fi
+          TEXT="⚠️ Angebots-Radar: Der Pipeline-Lauf ist fehlgeschlagen.
+
+          Log ansehen: $RUN_URL"
+          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${ALERT_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            -o /dev/null
+          echo "Fehler-Alarm an Telegram gesendet."
