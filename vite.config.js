@@ -9,6 +9,9 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registrierung erfolgt bewusst selbst in src/main.js, damit eine neue
+      // Version sofort übernommen wird statt erst beim übernächsten Start.
+      injectRegister: false,
       manifest: {
         name: 'Angebots-Radar',
         short_name: 'Angebote',
