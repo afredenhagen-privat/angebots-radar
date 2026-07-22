@@ -1,6 +1,6 @@
 <!-- src/views/MerkzettelView.vue -->
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useWatchlist } from '../stores/watchlist.js'
 import { useOffers } from '../stores/offers.js'
 import { useProducts } from '../stores/products.js'
@@ -11,9 +11,12 @@ import NavBar from '../components/NavBar.vue'
 const wl = useWatchlist()
 const offers = useOffers()
 const products = useProducts()
+
 const newTerm = ref('')
 const suggestions = ref([])
 const showSuggestions = ref(false)
+const statMap = ref(new Map())
+const limits = ref({})
 let suggestTimer = null
 
 onMounted(async () => {
@@ -28,6 +31,28 @@ onUnmounted(() => {
 const hitsByItem = computed(() =>
   wl.items.map((it) => ({ it, hits: offers.forTerm(it.term, it.target_price) })))
 const totalHits = computed(() => hitsByItem.value.reduce((s, x) => s + x.hits.length, 0))
+
+// Preisstatistik für die sichtbaren Treffer nachladen, damit die Karten die
+// Preislage beurteilen können.
+watch(
+  hitsByItem,
+  async (rows) => {
+    const keys = rows.flatMap((r) => r.hits.map((h) => h.product_key))
+    statMap.value = keys.length ? await products.statsForKeys(keys) : new Map()
+  },
+  { immediate: true },
+)
+
+// Eingabefelder der Preiswecker mit den gespeicherten Werten vorbelegen.
+watch(
+  () => wl.items,
+  (items) => {
+    const next = {}
+    for (const it of items) next[it.id] = it.target_price ?? ''
+    limits.value = next
+  },
+  { immediate: true },
+)
 
 function closeSuggestions() {
   suggestions.value = []
@@ -58,6 +83,15 @@ async function addTerm() {
   closeSuggestions()
   newTerm.value = ''
   await wl.add(term)
+}
+
+/** Preiswecker speichern. Leeres Feld hebt ihn auf. Komma wird akzeptiert. */
+async function saveLimit(it) {
+  const raw = String(limits.value[it.id] ?? '').replace(',', '.').trim()
+  if (raw === '') return wl.setTarget(it.id, null)
+  const val = Number(raw)
+  if (!Number.isFinite(val) || val <= 0) return
+  await wl.setTarget(it.id, val)
 }
 </script>
 
@@ -111,12 +145,7 @@ async function addTerm() {
       Noch nichts gemerkt. Such oben ein Produkt und tipp einen Vorschlag an.
     </p>
 
-    <details
-      v-for="{ it, hits } in hitsByItem"
-      :key="it.id"
-      class="karte overflow-hidden"
-      open
-    >
+    <details v-for="{ it, hits } in hitsByItem" :key="it.id" class="karte overflow-hidden" open>
       <summary class="flex justify-between items-center gap-3 p-3 cursor-pointer">
         <span class="font-semibold truncate">
           {{ it.term }}
@@ -134,8 +163,35 @@ async function addTerm() {
           >✕</button>
         </span>
       </summary>
+
       <div class="p-3 pt-0 space-y-2">
-        <OfferCard v-for="o in hits" :key="o.id" :offer="o" />
+        <!-- Preiswecker: nur melden, wenn der Preis unter diesem Wert liegt. -->
+        <div class="flex items-center gap-2 flex-wrap pb-1">
+          <label class="label" :for="`limit-${it.id}`">Preiswecker unter</label>
+          <input
+            :id="`limit-${it.id}`"
+            v-model="limits[it.id]"
+            type="text"
+            inputmode="decimal"
+            placeholder="—"
+            class="w-20 karte px-2 py-1 text-sm outline-none focus:border-deep"
+            @keyup.enter="saveLimit(it)"
+          />
+          <span class="text-sm text-muted">€</span>
+          <button type="button" class="text-xs font-semibold text-deep underline" @click="saveLimit(it)">
+            Speichern
+          </button>
+          <span v-if="!it.target_price" class="text-[11px] text-muted">
+            ohne Limit: jedes Angebot meldet
+          </span>
+        </div>
+
+        <OfferCard
+          v-for="o in hits"
+          :key="o.id"
+          :offer="o"
+          :stat="statMap.get(o.product_key)"
+        />
         <p v-if="!hits.length" class="text-sm text-muted">Diese Woche kein Angebot.</p>
       </div>
     </details>

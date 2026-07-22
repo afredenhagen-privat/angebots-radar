@@ -83,5 +83,27 @@ export const useProducts = defineStore('products', () => {
     }
   }
 
-  return { error, search, byKey, history }
+  /**
+   * Statistik zu mehreren Produkten auf einmal — damit die Trefferliste die
+   * Preislage anzeigen kann, ohne pro Karte eine eigene Abfrage zu feuern.
+   * Liefert eine Map product_key -> Statistik.
+   */
+  async function statsForKeys(keys) {
+    const unique = [...new Set((keys ?? []).filter(Boolean))].slice(0, 200)
+    if (!unique.length) return new Map()
+    try {
+      const { data, error: err } = await supabase
+        .from('product_stats')
+        .select('*')
+        .in('product_key', unique)
+      if (err) throw err
+      error.value = null
+      return new Map((data ?? []).map((r) => [r.product_key, r]))
+    } catch (e) {
+      error.value = describe(e)
+      return new Map()
+    }
+  }
+
+  return { error, search, byKey, history, statsForKeys }
 })
