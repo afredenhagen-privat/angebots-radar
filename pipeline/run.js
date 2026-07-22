@@ -85,6 +85,17 @@ async function main() {
   }
 
   // 7. Matching + Alerts
+  //
+  // Gemeldet wird nur, was JETZT noch gültig ist. Marktguru liefert auch
+  // Angebote, deren Zeitraum bereits abgelaufen ist — ohne diesen Filter
+  // bekämst du eine Meldung zu einem Angebot, das es nicht mehr gibt (und das
+  // die App zu Recht gar nicht erst anzeigt).
+  const jetzt = new Date().toISOString()
+  const aktuelle = offers.filter((o) => !o.valid_to || o.valid_to >= jetzt)
+  if (aktuelle.length !== offers.length) {
+    console.log(`${offers.length - aktuelle.length} abgelaufene Angebote von der Meldung ausgenommen`)
+  }
+
   const { data: sentData, error: asErr } = await admin.from('alerts_sent').select('watchlist_id, offer_id')
   if (asErr) throw asErr
   const alreadySent = sentData ?? []
@@ -94,7 +105,7 @@ async function main() {
     // Alle neuen Treffer dieses Eintrags sammeln und in EINER Nachricht
     // melden. Pro Treffer zu senden macht den Wecker bei breiten Eintraegen
     // zur Spam-Quelle.
-    const treffer = offers.filter((o) => offerMatchesEntry(o, watch))
+    const treffer = aktuelle.filter((o) => offerMatchesEntry(o, watch))
     const neu = treffer.filter((o) => !sentKey.has(`${watch.id}:${o.id}`))
     console.log(
       `"${watch.term}": ${treffer.length} Treffer, davon ${neu.length} neu` +

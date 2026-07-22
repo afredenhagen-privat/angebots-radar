@@ -42,10 +42,16 @@ const koerbe = computed(() =>
       angebote: offers.items.filter((o) => o.product_key === key),
     }))
     const treffer = offers.forEntry(it)
-    return { it, keys, produkte, treffer }
+    // Das Abzeichen zählt, was hier auch wirklich steht. Das Preislimit
+    // steuert nur die Telegram-Meldung — sonst zeigt derselbe Bildschirm
+    // zwei verschiedene Wahrheiten.
+    const angezeigt = keys.length
+      ? produkte.reduce((s, p) => s + p.angebote.length, 0)
+      : treffer.length
+    return { it, keys, produkte, treffer, angezeigt }
   }))
 
-const totalHits = computed(() => koerbe.value.reduce((s, k) => s + k.treffer.length, 0))
+const totalHits = computed(() => koerbe.value.reduce((s, k) => s + k.angezeigt, 0))
 
 // Statistik für alle Produkte in den Körben laden (Preisurteil auf den Karten).
 watch(
@@ -121,8 +127,8 @@ const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
         <span class="flex items-center gap-3 shrink-0">
           <span
             class="preis text-sm px-2 py-0.5 rounded"
-            :class="k.treffer.length ? 'bg-signal text-card' : 'bg-paper text-muted'"
-          >{{ k.treffer.length }}</span>
+            :class="k.angezeigt ? 'bg-signal text-card' : 'bg-paper text-muted'"
+          >{{ k.angezeigt }}</span>
           <button
             class="text-muted hover:text-signal text-sm"
             :aria-label="`${k.it.term} entfernen`"
@@ -149,6 +155,12 @@ const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
             Speichern
           </button>
         </div>
+        <p class="text-[11px] text-muted -mt-1">
+          <template v-if="k.it.target_price != null">
+            Telegram meldet nur unter {{ k.it.target_price }} €. Hier siehst du alle Angebote.
+          </template>
+          <template v-else>Ohne Limit meldet Telegram jedes neue Angebot.</template>
+        </p>
 
         <!-- Korb mit konkreten Produkten -->
         <template v-if="k.keys.length">
