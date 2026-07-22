@@ -14,6 +14,11 @@ async function main() {
   const { data: watchlistData, error: wErr } = await admin.from('watchlist').select('*')
   if (wErr) throw wErr
   const watchlist = watchlistData ?? []
+  console.log(`Merkliste: ${watchlist.length} Eintrag/Einträge`)
+  for (const w of watchlist) {
+    const n = (w.product_keys ?? []).length
+    console.log(`  · "${w.term}": ${n ? `${n} Produkt(e) im Korb` : 'Freitext'}${w.target_price != null ? `, Limit ${w.target_price} €` : ''}`)
+  }
 
   // 2. Begriffsliste = Merkzettel-Begriffe ∪ Kategorien
   const terms = [...new Set([...watchlist.map((w) => w.term), ...CATEGORIES])]
@@ -64,13 +69,20 @@ async function main() {
   if (delErr) console.warn(`history prune fail: ${delErr.message}`)
 
   // 6. Telegram-Empfänger aktualisieren
-  if (TOKEN) {
+  if (!TOKEN) {
+    console.warn('TELEGRAM_BOT_TOKEN fehlt — es werden keine Alerts verschickt.')
+  } else {
     const subs = await harvestChatIds(TOKEN)
+    console.log(`Telegram getUpdates: ${subs.length} Chat(s) gefunden`)
     if (subs.length) await admin.from('telegram_subscribers').upsert(subs, { onConflict: 'chat_id' })
   }
   const { data: subsData, error: subErr } = await admin.from('telegram_subscribers').select('*')
   if (subErr) throw subErr
   const subscribers = subsData ?? []
+  console.log(`Empfänger in der Datenbank: ${subscribers.length}`)
+  if (TOKEN && !subscribers.length) {
+    console.warn('Niemand registriert — schickt dem Bot einmal /start, sonst gibt es keine Alerts.')
+  }
 
   // 7. Matching + Alerts
   const { data: sentData, error: asErr } = await admin.from('alerts_sent').select('watchlist_id, offer_id')
@@ -82,8 +94,11 @@ async function main() {
     // Alle neuen Treffer dieses Eintrags sammeln und in EINER Nachricht
     // melden. Pro Treffer zu senden macht den Wecker bei breiten Eintraegen
     // zur Spam-Quelle.
-    const neu = offers.filter(
-      (o) => !sentKey.has(`${watch.id}:${o.id}`) && offerMatchesEntry(o, watch),
+    const treffer = offers.filter((o) => offerMatchesEntry(o, watch))
+    const neu = treffer.filter((o) => !sentKey.has(`${watch.id}:${o.id}`))
+    console.log(
+      `"${watch.term}": ${treffer.length} Treffer, davon ${neu.length} neu` +
+        (treffer.length && !neu.length ? ' (alle schon gemeldet)' : ''),
     )
     if (!neu.length) continue
 
