@@ -89,15 +89,25 @@ Supabase leitet nach dem Klick nur auf Adressen weiter, die vorher freigegeben s
 
 Diese drei Werte brauchst du gleich in Schritt 6.
 
-1. Linkes Menü → **Project Settings** (Zahnrad) → **API**
-   *(In neueren Supabase-Versionen heißt der Punkt **API Keys** bzw. **Data API**.)*
-2. Notiere dir (am besten in einen Notizzettel, gleich brauchst du sie):
+> ⚠️ **Die häufigste Fehlerquelle im ganzen Setup.** Nimm die **nackte Project-URL**, *nicht* die „Data API"-URL. Die endet nämlich auf `/rest/v1/` — damit baut die App Adressen wie `.../rest/v1/auth/v1/otp` und du bekommst beim Login **„Invalid path specified in request URL"**.
+>
+> ✅ richtig: `https://abcdefgh.supabase.co`
+> ❌ falsch: `https://abcdefgh.supabase.co/rest/v1/`
+>
+> *(Die App räumt so eine URL inzwischen selbst auf und warnt in der Browser-Konsole — sauber eintragen ist trotzdem besser.)*
+
+**Project URL:** Linkes Menü → **Data API**. Ganz oben steht **Project URL**. Alternativ aus der Adresszeile ableiten: die Zeichenkette nach `/project/` ist deine Projekt-ID, die URL lautet dann `https://<projekt-id>.supabase.co`.
+
+**Die beiden Keys:** Linkes Menü → **API Keys**.
+
+Supabase hat hier ein neues Key-System — du siehst oben zwei Reiter. **Nimm den Reiter „Legacy anon, service_role API keys"**, denn unsere `supabase-js`-Version ist älter als das neue Format:
 
    | Was | Wo es steht | Sieht aus wie |
    |---|---|---|
-   | **Project URL** | ganz oben unter *Project URL* | `https://abcdefgh.supabase.co` |
-   | **anon public key** | unter *Project API keys* → `anon` `public` | langer Text, beginnt mit `eyJ...` |
-   | **service_role key** | unter *Project API keys* → `service_role` `secret` (musst du per *Reveal* einblenden) | langer Text, beginnt mit `eyJ...` |
+   | **anon public key** | Legacy-Reiter → `anon` `public` | langer Text, beginnt mit `eyJ...` |
+   | **service_role key** | Legacy-Reiter → `service_role` `secret` (per Auge einblenden) | langer Text, beginnt mit `eyJ...` |
+
+> Die neuen Keys (`sb_publishable_…` / `sb_secret_…`) sind die Nachfolger von `anon` bzw. `service_role`. Auf die kann später umgestellt werden — dann muss vorher die Bibliothek aktualisiert werden.
 
 > ⚠️ **Wichtig:** Der `service_role`-Key umgeht alle Sicherheitsregeln. Der gehört **nur** in die GitHub-Secrets (Schritt 6) und **niemals** ins Frontend oder in eine Datei im Repo. Der `anon`-Key dagegen ist unkritisch und darf öffentlich sein.
 
@@ -165,6 +175,14 @@ Damit du eine Telegram-Nachricht bekommst, wenn der tägliche Lauf fehlschlägt 
 ## Schritt 7 — GitHub Pages aktivieren
 
 Damit die App überhaupt eine Adresse bekommt.
+
+> ⚠️ **Voraussetzung: Das Repo muss öffentlich sein.** GitHub Pages gibt es im kostenlosen Plan nur für öffentliche Repos — bei einem privaten siehst du stattdessen „Upgrade or make this repository public to enable Pages".
+>
+> Das ist unkritisch: Im Repo liegen **keine Geheimnisse** (Tokens stecken in den GitHub-Secrets, `.env` ist ausgeschlossen, der `anon`-Key ist ohnehin öffentlich). Geschützt werden eure Daten durch den Login und die abgeschalteten Signups — nicht durch die Sichtbarkeit des Codes. Und die veröffentlichte App ist über ihre URL sowieso erreichbar.
+>
+> Umstellen unter **Settings → General → ganz unten „Change repository visibility"**. Wer den Code privat halten will, nutzt stattdessen Cloudflare Pages oder Vercel (deployen auch aus privaten Repos kostenlos, brauchen aber eine Anpassung des Basis-Pfads).
+>
+> Bonus: Bei öffentlichen Repos sind GitHub-Actions-Minuten unbegrenzt frei — der tägliche Cron kostet damit nie etwas.
 
 1. Im selben Repo: **Settings** → links **Pages**.
 2. Unter **Build and deployment** → **Source** wähle **GitHub Actions** (nicht „Deploy from a branch"!).
