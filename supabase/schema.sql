@@ -25,8 +25,12 @@ create table if not exists offers (
 create index if not exists offers_product_key_idx on offers (product_key);
 create index if not exists offers_valid_to_idx on offers (valid_to);
 
+-- Ein Merkzettel-Eintrag ist ein benannter Korb konkreter Produkte:
+-- `term` ist der Anzeigename, `product_keys` die enthaltenen Produkte.
+-- Leerer Korb = alte Freitext-Logik (Teilstring über Produkt + Marke).
 create table if not exists watchlist (
   id uuid primary key default gen_random_uuid(),
+  product_keys text[] not null default '{}',
   term text not null,
   target_price numeric,
   note text,

@@ -1,22 +1,43 @@
 // pipeline/telegram.js
 const eur = (n) => Number(n).toFixed(2).replace('.', ',')
 
-export function formatAlert(watch, offer) {
-  const priceUnit = offer.unit ? `/${offer.unit}` : ''
-  const price = offer.price != null ? `${eur(offer.price)} €${priceUnit}` : 'Preis?'
+const MAX_ZEILEN = 3
+
+function preisZeile(offer) {
+  const unit = offer.unit ? `/${offer.unit}` : ''
+  const price = offer.price != null ? `${eur(offer.price)} €${unit}` : 'Preis?'
   const was = offer.old_price != null ? ` (statt ${eur(offer.old_price)} €)` : ''
-  let until = ''
-  if (offer.valid_to) {
-    const d = offer.valid_to
-    until = ` – gültig bis ${d.slice(8, 10)}.${d.slice(5, 7)}.`
-  }
-  const title = offer.product ?? watch.term
-  const brand = offer.brand ? ` (${offer.brand})` : ''
-  const retailer = offer.retailer ?? ''
-  return `🛒 ${title}${brand}\n${retailer}: ${price}${was}${until}`
+  const brand = offer.brand ? ` ${offer.brand}` : ''
+  const retailer = offer.retailer ? ` · ${offer.retailer}` : ''
+  return `${price}${was} · ${offer.product ?? ''}${brand}${retailer}`.trim()
 }
 
-// pipeline/telegram.js  (an die bestehende Datei anhängen)
+function bis(iso) {
+  return iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : null
+}
+
+/**
+ * Eine Nachricht je Merkzettel-Eintrag statt je Treffer.
+ *
+ * Ohne diese Bündelung löst ein breiter Eintrag wie "Butter" bei einem Lauf
+ * dutzende Einzelnachrichten aus — der Wecker wird dann zum Spam und man
+ * schaltet ihn ab.
+ */
+export function formatDigest(watch, offers) {
+  const sorted = [...offers].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))
+  const anzahl = sorted.length
+  const kopf = `🛒 ${watch.term} — ${anzahl} ${anzahl === 1 ? 'neues Angebot' : 'neue Angebote'}`
+
+  const zeilen = sorted.slice(0, MAX_ZEILEN).map(preisZeile)
+  const rest = anzahl - zeilen.length
+  if (rest > 0) zeilen.push(`… und ${rest} weitere`)
+
+  const gueltig = bis(sorted[0]?.valid_to)
+  const fuss = gueltig ? `\n\nGünstigstes gültig bis ${gueltig}` : ''
+
+  return `${kopf}\n\n${zeilen.join('\n')}${fuss}`
+}
+
 const API = (token) => `https://api.telegram.org/bot${token}`
 
 export async function sendMessage(token, chatId, text) {

@@ -2,8 +2,8 @@
 import { admin } from './supabaseAdmin.js'
 import { fetchKeys, searchOffers, sleep } from './marktguru/client.js'
 import { normalizeOffer } from './marktguru/normalize.js'
-import { offerMatchesWatch } from './matching.js'
-import { formatAlert, sendMessage, harvestChatIds } from './telegram.js'
+import { offerMatchesEntry } from '../shared/matching.js'
+import { formatDigest, sendMessage, harvestChatIds } from './telegram.js'
 import { CATEGORIES } from './categories.js'
 
 const ZIPS = (process.env.ZIP_CODES ?? '97204,97070').split(',').map((z) => z.trim())
@@ -79,32 +79,36 @@ async function main() {
   const sentKey = new Set(alreadySent.map((a) => `${a.watchlist_id}:${a.offer_id}`))
 
   for (const watch of watchlist) {
-    for (const offer of offers) {
-      const key = `${watch.id}:${offer.id}`
-      if (sentKey.has(key)) continue
-      if (!offerMatchesWatch(offer, watch)) continue
+    // Alle neuen Treffer dieses Eintrags sammeln und in EINER Nachricht
+    // melden. Pro Treffer zu senden macht den Wecker bei breiten Eintraegen
+    // zur Spam-Quelle.
+    const neu = offers.filter(
+      (o) => !sentKey.has(`${watch.id}:${o.id}`) && offerMatchesEntry(o, watch),
+    )
+    if (!neu.length) continue
 
-      // Nur als "gesendet" markieren, wenn wirklich zugestellt wurde.
-      let delivered = false
-      if (TOKEN && subscribers.length) {
-        for (const sub of subscribers) {
-          try {
-            await sendMessage(TOKEN, sub.chat_id, formatAlert(watch, offer))
-            delivered = true
-          } catch (e) {
-            console.warn(`telegram fail ${sub.chat_id}: ${e.message}`)
-          }
+    // Nur als "gesendet" markieren, wenn wirklich zugestellt wurde.
+    let delivered = false
+    if (TOKEN && subscribers.length) {
+      const text = formatDigest(watch, neu)
+      for (const sub of subscribers) {
+        try {
+          await sendMessage(TOKEN, sub.chat_id, text)
+          delivered = true
+        } catch (e) {
+          console.warn(`telegram fail ${sub.chat_id}: ${e.message}`)
         }
       }
-      if (!delivered) continue // kein erfolgreicher Versand -> beim nächsten Lauf erneut versuchen
-
-      const { error: insErr } = await admin
-        .from('alerts_sent')
-        .upsert({ watchlist_id: watch.id, offer_id: offer.id },
-                { onConflict: 'watchlist_id,offer_id', ignoreDuplicates: true })
-      if (insErr) { console.warn(`alerts_sent insert fail: ${insErr.message}`); continue }
-      sentKey.add(key)
     }
+    if (!delivered) continue // kein erfolgreicher Versand -> beim naechsten Lauf erneut versuchen
+
+    const rows = neu.map((o) => ({ watchlist_id: watch.id, offer_id: o.id }))
+    const { error: insErr } = await admin
+      .from('alerts_sent')
+      .upsert(rows, { onConflict: 'watchlist_id,offer_id', ignoreDuplicates: true })
+    if (insErr) { console.warn(`alerts_sent insert fail: ${insErr.message}`); continue }
+    for (const o of neu) sentKey.add(`${watch.id}:${o.id}`)
+    console.log(`Alert "${watch.term}": ${neu.length} Angebot(e) gemeldet.`)
   }
   console.log('Pipeline fertig.')
 }

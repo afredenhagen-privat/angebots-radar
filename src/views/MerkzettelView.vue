@@ -4,46 +4,59 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useWatchlist } from '../stores/watchlist.js'
 import { useOffers } from '../stores/offers.js'
 import { useProducts } from '../stores/products.js'
-import { datum } from '../lib/format.js'
 import OfferCard from '../components/OfferCard.vue'
+import ProductPicker from '../components/ProductPicker.vue'
 import NavBar from '../components/NavBar.vue'
 
 const wl = useWatchlist()
 const offers = useOffers()
 const products = useProducts()
 
-const newTerm = ref('')
-const suggestions = ref([])
-const showSuggestions = ref(false)
 const statMap = ref(new Map())
 const limits = ref({})
-let suggestTimer = null
+const addingTo = ref(null)
+const ladefehler = ref('')
 
 onMounted(async () => {
-  await Promise.all([wl.load(), offers.load()])
+  try {
+    await Promise.all([wl.load(), offers.load()])
+  } catch (e) {
+    ladefehler.value = 'Daten konnten nicht geladen werden. Prüf deine Verbindung.'
+  }
+  // Auch nach einem Fehlschlag abonnieren, damit spätere Änderungen ankommen.
   wl.subscribe()
 })
-onUnmounted(() => {
-  clearTimeout(suggestTimer)
-  wl.unsubscribe()
-})
+onUnmounted(() => wl.unsubscribe())
 
-const hitsByItem = computed(() =>
-  wl.items.map((it) => ({ it, hits: offers.forTerm(it.term, it.target_price) })))
-const totalHits = computed(() => hitsByItem.value.reduce((s, x) => s + x.hits.length, 0))
+/**
+ * Ein Korb zeigt seine Produkte einzeln — so sieht man auch, welches gerade
+ * KEIN Angebot hat. Alte Freitext-Einträge haben keine Produkte und zeigen
+ * stattdessen ihre Treffer.
+ */
+const koerbe = computed(() =>
+  wl.items.map((it) => {
+    const keys = it.product_keys ?? []
+    const produkte = keys.map((key) => ({
+      key,
+      stat: statMap.value.get(key) ?? null,
+      angebote: offers.items.filter((o) => o.product_key === key),
+    }))
+    const treffer = offers.forEntry(it)
+    return { it, keys, produkte, treffer }
+  }))
 
-// Preisstatistik für die sichtbaren Treffer nachladen, damit die Karten die
-// Preislage beurteilen können.
+const totalHits = computed(() => koerbe.value.reduce((s, k) => s + k.treffer.length, 0))
+
+// Statistik für alle Produkte in den Körben laden (Preisurteil auf den Karten).
 watch(
-  hitsByItem,
-  async (rows) => {
-    const keys = rows.flatMap((r) => r.hits.map((h) => h.product_key))
+  () => wl.items,
+  async (items) => {
+    const keys = items.flatMap((i) => i.product_keys ?? [])
     statMap.value = keys.length ? await products.statsForKeys(keys) : new Map()
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 )
 
-// Eingabefelder der Preiswecker mit den gespeicherten Werten vorbelegen.
 watch(
   () => wl.items,
   (items) => {
@@ -54,38 +67,15 @@ watch(
   { immediate: true },
 )
 
-function closeSuggestions() {
-  suggestions.value = []
-  showSuggestions.value = false
+async function neuerKorb(s) {
+  await wl.addBasket(s.product, s.product_key)
 }
 
-function onTermInput() {
-  clearTimeout(suggestTimer)
-  if (!newTerm.value.trim()) return closeSuggestions()
-  suggestTimer = setTimeout(async () => {
-    suggestions.value = (await products.search(newTerm.value)).slice(0, 8)
-    showSuggestions.value = true
-  }, 300)
+async function produktHinzufuegen(id, s) {
+  await wl.addProduct(id, s.product_key)
+  addingTo.value = null
 }
 
-/** Vorschlag antippen legt den Eintrag direkt an — kein zweiter Handgriff. */
-async function pickSuggestion(s) {
-  clearTimeout(suggestTimer)
-  closeSuggestions()
-  newTerm.value = ''
-  await wl.add(s.product)
-}
-
-async function addTerm() {
-  const term = newTerm.value.trim()
-  if (!term) return
-  clearTimeout(suggestTimer)
-  closeSuggestions()
-  newTerm.value = ''
-  await wl.add(term)
-}
-
-/** Preiswecker speichern. Leeres Feld hebt ihn auf. Komma wird akzeptiert. */
 async function saveLimit(it) {
   const raw = String(limits.value[it.id] ?? '').replace(',', '.').trim()
   if (raw === '') return wl.setTarget(it.id, null)
@@ -93,6 +83,9 @@ async function saveLimit(it) {
   if (!Number.isFinite(val) || val <= 0) return
   await wl.setTarget(it.id, val)
 }
+
+const nameVon = (p) => p.stat?.product ?? p.key.split('|')[1] ?? p.key
+const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
 </script>
 
 <template>
@@ -107,92 +100,106 @@ async function saveLimit(it) {
       </p>
     </header>
 
-    <form class="relative" @submit.prevent="addTerm">
-      <div class="flex gap-2">
-        <input
-          v-model="newTerm"
-          @input="onTermInput"
-          placeholder="Produkt suchen und hinzufügen"
-          class="flex-1 karte p-3 outline-none focus:border-deep"
-        />
-        <button class="bg-deep text-card px-4 rounded-lg font-semibold" aria-label="Hinzufügen">+</button>
-      </div>
+    <p v-if="ladefehler" class="text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ ladefehler }}</p>
 
-      <ul
-        v-if="showSuggestions && suggestions.length"
-        class="absolute z-10 left-0 right-0 mt-1 karte shadow-lg overflow-hidden"
-      >
-        <li v-for="s in suggestions" :key="s.product_key">
-          <button
-            type="button"
-            class="w-full text-left px-3 py-2 border-b border-hair last:border-b-0 hover:bg-paper focus:bg-paper outline-none"
-            @click="pickSuggestion(s)"
-          >
-            <span class="font-medium">{{ s.product }}</span>
-            <span v-if="s.brand" class="text-muted"> {{ s.brand }}</span>
-            <span class="block text-[11px]" :class="s.currently_active ? 'text-signal' : 'text-muted'">
-              {{ s.currently_active ? 'gerade im Angebot' : `zuletzt ${datum(s.last_valid_to)}` }}
-            </span>
-          </button>
-        </li>
-      </ul>
-      <p v-else-if="showSuggestions" class="mt-1 text-xs text-muted px-1">
-        Nichts gefunden — du kannst den Begriff trotzdem mit + anlegen.
-      </p>
-    </form>
+    <section class="space-y-1">
+      <p class="label">Neuer Eintrag</p>
+      <ProductPicker placeholder="Produkt suchen und merken" @pick="neuerKorb" />
+    </section>
 
-    <p v-if="!wl.items.length" class="text-sm text-muted">
+    <p v-if="!wl.items.length && !ladefehler" class="text-sm text-muted">
       Noch nichts gemerkt. Such oben ein Produkt und tipp einen Vorschlag an.
     </p>
 
-    <details v-for="{ it, hits } in hitsByItem" :key="it.id" class="karte overflow-hidden" open>
+    <details v-for="k in koerbe" :key="k.it.id" class="karte overflow-hidden" open>
       <summary class="flex justify-between items-center gap-3 p-3 cursor-pointer">
         <span class="font-semibold truncate">
-          {{ it.term }}
-          <span v-if="it.target_price" class="label ml-1">unter {{ it.target_price }} €</span>
+          {{ k.it.term }}
+          <span v-if="k.it.target_price" class="label ml-1">unter {{ k.it.target_price }} €</span>
         </span>
         <span class="flex items-center gap-3 shrink-0">
           <span
             class="preis text-sm px-2 py-0.5 rounded"
-            :class="hits.length ? 'bg-signal text-card' : 'bg-paper text-muted'"
-          >{{ hits.length }}</span>
+            :class="k.treffer.length ? 'bg-signal text-card' : 'bg-paper text-muted'"
+          >{{ k.treffer.length }}</span>
           <button
             class="text-muted hover:text-signal text-sm"
-            :aria-label="`${it.term} entfernen`"
-            @click.prevent="wl.remove(it.id)"
+            :aria-label="`${k.it.term} entfernen`"
+            @click.prevent="wl.remove(k.it.id)"
           >✕</button>
         </span>
       </summary>
 
-      <div class="p-3 pt-0 space-y-2">
+      <div class="p-3 pt-0 space-y-3">
         <!-- Preiswecker: nur melden, wenn der Preis unter diesem Wert liegt. -->
-        <div class="flex items-center gap-2 flex-wrap pb-1">
-          <label class="label" :for="`limit-${it.id}`">Preiswecker unter</label>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="label" :for="`limit-${k.it.id}`">Preiswecker unter</label>
           <input
-            :id="`limit-${it.id}`"
-            v-model="limits[it.id]"
+            :id="`limit-${k.it.id}`"
+            v-model="limits[k.it.id]"
             type="text"
             inputmode="decimal"
             placeholder="—"
             class="w-20 karte px-2 py-1 text-sm outline-none focus:border-deep"
-            @keyup.enter="saveLimit(it)"
+            @keyup.enter="saveLimit(k.it)"
           />
           <span class="text-sm text-muted">€</span>
-          <button type="button" class="text-xs font-semibold text-deep underline" @click="saveLimit(it)">
+          <button type="button" class="text-xs font-semibold text-deep underline" @click="saveLimit(k.it)">
             Speichern
           </button>
-          <span v-if="!it.target_price" class="text-[11px] text-muted">
-            ohne Limit: jedes Angebot meldet
-          </span>
         </div>
 
-        <OfferCard
-          v-for="o in hits"
-          :key="o.id"
-          :offer="o"
-          :stat="statMap.get(o.product_key)"
-        />
-        <p v-if="!hits.length" class="text-sm text-muted">Diese Woche kein Angebot.</p>
+        <!-- Korb mit konkreten Produkten -->
+        <template v-if="k.keys.length">
+          <div v-for="p in k.produkte" :key="p.key" class="space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm truncate">
+                {{ nameVon(p) }}
+                <span class="text-muted">{{ markeVon(p) }}</span>
+              </span>
+              <button
+                class="text-xs text-muted hover:text-signal shrink-0"
+                :aria-label="`${nameVon(p)} aus dem Korb nehmen`"
+                @click="wl.removeProduct(k.it.id, p.key)"
+              >entfernen</button>
+            </div>
+            <OfferCard
+              v-for="o in p.angebote"
+              :key="o.id"
+              :offer="o"
+              :stat="p.stat"
+            />
+            <p v-if="!p.angebote.length" class="text-xs text-muted pl-1">gerade kein Angebot</p>
+          </div>
+
+          <div v-if="addingTo === k.it.id">
+            <ProductPicker
+              placeholder="Weiteres Produkt in diesen Korb"
+              autofocus
+              @pick="(s) => produktHinzufuegen(k.it.id, s)"
+            />
+            <button class="mt-1 text-xs text-muted underline" @click="addingTo = null">Abbrechen</button>
+          </div>
+          <button
+            v-else
+            class="text-xs font-semibold text-deep underline"
+            @click="addingTo = k.it.id"
+          >+ Produkt hinzufügen</button>
+        </template>
+
+        <!-- Alter Freitext-Eintrag: zeigt weiterhin seine Treffer -->
+        <template v-else>
+          <p class="text-xs text-muted">
+            Freitext-Eintrag — matcht per Namensteil. Leg ihn neu über die Suche an, um exakt zu treffen.
+          </p>
+          <OfferCard
+            v-for="o in k.treffer"
+            :key="o.id"
+            :offer="o"
+            :stat="statMap.get(o.product_key)"
+          />
+          <p v-if="!k.treffer.length" class="text-sm text-muted">Diese Woche kein Angebot.</p>
+        </template>
       </div>
     </details>
 
