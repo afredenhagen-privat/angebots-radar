@@ -43,17 +43,20 @@ Du solltest „Success. No rows returned" sehen.
 
 ## Schritt 3 — Login einrichten (Magic Link)
 
-Der Login läuft **passwortlos per Magic Link**: Ihr gebt eure E-Mail ein, bekommt eine Mail, klickt den Link — fertig. Jeder von euch nutzt seine **eigene** E-Mail-Adresse; ihr seht trotzdem beide dieselbe Merkliste.
+Der Login läuft **passwortlos per Magic Link**: Ihr gebt eure E-Mail ein, bekommt eine Mail, klickt den Link — fertig. Ihr nutzt beide **eure gemeinsame E-Mail-Adresse**, also reicht **ein** Nutzer.
 
-### 3a — Eure beiden Nutzer anlegen
+> **Voraussetzung:** Das gemeinsame Postfach muss auf **beiden Handys** abrufbar sein — jeder muss den Magic Link auf seinem eigenen Gerät antippen können. Ist das nicht der Fall, leg stattdessen zwei Nutzer an (siehe Kasten unten).
+
+### 3a — Euren Nutzer anlegen
 
 1. Linkes Menü → **Authentication** → **Users**.
 2. **Add user** → **Create new user**. Fülle aus:
-   - **Email:** deine E-Mail-Adresse.
+   - **Email:** eure gemeinsame E-Mail-Adresse.
    - **Password:** irgendein zufälliges Passwort (wird nie gebraucht, der Login läuft über den Magic Link — trag einfach was Langes ein).
    - **Auto Confirm User:** ✅ **anhaken**.
 3. **Create user** klicken.
-4. **Das Ganze ein zweites Mal** — diesmal mit der E-Mail-Adresse deiner Verlobten.
+
+> **Alternative — zwei getrennte Nutzer:** Wenn ihr lieber jeder mit eurer eigenen Adresse rein wollt, leg den Schritt einfach zweimal an (einmal pro E-Mail). Am Verhalten der App ändert das nichts: Die Zugriffsregeln unterscheiden nicht nach Person, ihr seht so oder so dieselbe Merkliste. Das lässt sich auch später jederzeit nachholen, ohne dass am Code etwas geändert werden muss.
 
 ### 3b — Self-Signup abschalten ⚠️ (wichtig!)
 
@@ -220,9 +223,11 @@ Jetzt füllen wir die Datenbank zum ersten Mal.
 
 1. Öffnet auf **beiden** Handys **https://afredenhagen-privat.github.io/angebots-radar/**
 2. **Einloggen per Magic Link** — jeder auf seinem eigenen Handy:
-   - Eigene E-Mail-Adresse eintippen (die aus Schritt 3a) → **Magic-Link senden**.
-   - Die Mail von Supabase öffnen — **wichtig: auf demselben Handy**, auf dem du dich einloggen willst.
+   - Eure gemeinsame E-Mail-Adresse eintippen (die aus Schritt 3a) → **Magic-Link senden**.
+   - Die Mail von Supabase im gemeinsamen Postfach öffnen — **wichtig: auf demselben Handy**, auf dem du dich einloggen willst.
    - Auf den Link tippen → die App öffnet sich und du bist angemeldet. Kein Passwort nötig.
+
+   > Macht das **nacheinander**, nicht gleichzeitig: Jeder fordert seinen Link an, klickt ihn, und erst dann ist der Nächste dran. So landet nicht der Link des einen versehentlich beim anderen.
 
    > **Kommt keine Mail?** Schau im Spam-Ordner. Supabase' eingebauter Mailversand ist im Free-Tier limitiert (wenige Mails pro Stunde) — bei mehreren Versuchen hintereinander einfach kurz warten.
    >

@@ -21,10 +21,12 @@ wenn die eigenen Wunschprodukte gerade günstig sind.
 - Zwei Personen (Verlobtes Paar), ein Haushalt.
 - Zugriff von beiden Smartphones.
 - **Login per Magic Link** (passwortlos, wie beim Schwesterprojekt Vorratsmonster):
-  Jede Person nutzt ihre **eigene** E-Mail-Adresse. Beide Nutzer werden vorab manuell in
-  Supabase angelegt, Self-Signup ist abgeschaltet. Kein Rollenmodell — die RLS-Regeln
-  geben jedem eingeloggten Nutzer vollen Zugriff, dadurch sehen und bearbeiten beide
-  automatisch dieselben Daten.
+  Beide melden sich mit der **gemeinsamen E-Mail-Adresse** des Paares an, es gibt also
+  genau **einen** Nutzer. Der wird vorab manuell in Supabase angelegt, Self-Signup ist
+  abgeschaltet. Kein Rollenmodell — die RLS-Regeln geben jedem eingeloggten Nutzer vollen
+  Zugriff, dadurch sehen und bearbeiten beide dieselben Daten.
+  *(Zwei getrennte Nutzer mit je eigener Adresse funktionieren identisch und lassen sich
+  jederzeit ohne Code-Änderung nachrüsten.)*
 
   > *Geändert am 2026-07-22:* ursprünglich war ein einzelnes geteiltes Haushalts-Login mit
   > Passwort vorgesehen. Magic Link passt besser (kein Passwort-Teilen, konsistent zu den

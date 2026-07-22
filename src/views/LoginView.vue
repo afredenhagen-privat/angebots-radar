@@ -33,7 +33,8 @@ async function submit() {
 
       <template v-if="!auth.sentTo">
         <p class="text-sm text-slate-500">
-          Meldet euch beide mit eurer eigenen E-Mail an — ihr seht danach dieselbe Merkliste.
+          Meldet euch auf beiden Handys mit eurer gemeinsamen E-Mail an — ihr seht
+          danach dieselbe Merkliste.
         </p>
 
         <form class="space-y-3" @submit.prevent="submit">
