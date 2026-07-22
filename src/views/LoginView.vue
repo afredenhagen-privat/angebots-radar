@@ -27,12 +27,12 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-    <div class="w-full max-w-sm space-y-4 bg-white p-6 rounded-2xl shadow">
+  <div class="min-h-screen flex items-center justify-center p-6 bg-paper">
+    <div class="w-full max-w-sm space-y-4 karte p-6">
       <h1 class="text-xl font-bold">Angebots-Radar</h1>
 
       <template v-if="!auth.sentTo">
-        <p class="text-sm text-slate-500">
+        <p class="text-sm text-muted">
           Meldet euch auf beiden Handys mit eurer gemeinsamen E-Mail an — ihr seht
           danach dieselbe Merkliste.
         </p>
@@ -44,11 +44,11 @@ async function submit() {
             inputmode="email"
             autocomplete="email"
             placeholder="dein@beispiel.de"
-            class="w-full border rounded-lg p-3"
+            class="w-full karte p-3 outline-none focus:border-deep"
           />
           <p v-if="auth.error" class="text-red-600 text-sm">{{ auth.error }}</p>
           <button
-            class="w-full bg-emerald-600 text-white rounded-lg p-3 font-semibold disabled:opacity-50"
+            class="w-full bg-deep text-card rounded-lg p-3 font-semibold disabled:opacity-50"
             :disabled="!valid || auth.sending"
           >
             {{ auth.sending ? 'Sende…' : 'Magic-Link senden' }}
@@ -57,11 +57,11 @@ async function submit() {
       </template>
 
       <template v-else>
-        <p class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-900">
+        <p class="rounded-lg bg-paper border border-hair p-3 text-sm text-ink">
           Mail ist raus an <strong>{{ auth.sentTo }}</strong>. Öffne den Link
           <strong>auf diesem Gerät</strong> — danach bist du automatisch angemeldet.
         </p>
-        <button class="text-sm text-slate-500 underline" @click="auth.reset()">
+        <button class="text-sm text-muted underline" @click="auth.reset()">
           Andere E-Mail verwenden
         </button>
       </template>

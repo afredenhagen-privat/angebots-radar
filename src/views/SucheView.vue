@@ -25,12 +25,21 @@ function onInput() {
 
 <template>
   <div class="max-w-xl mx-auto p-4 pb-24 space-y-3">
-    <h1 class="text-xl font-bold">Suche</h1>
-    <input v-model="query" @input="onInput" placeholder="Produkt suchen, z.B. Butter" class="w-full border rounded-lg p-3" />
+    <header>
+      <p class="label">Katalog</p>
+      <h1 class="text-xl font-bold">Suche</h1>
+    </header>
+
+    <input
+      v-model="query"
+      @input="onInput"
+      placeholder="Produkt suchen, z.B. Butter"
+      class="w-full karte p-3 outline-none focus:border-deep"
+    />
 
     <p v-if="products.error" class="text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ products.error }}</p>
-    <p v-else-if="query.trim().length < 2" class="text-sm text-slate-400">Mindestens 2 Zeichen eingeben.</p>
-    <p v-else-if="!results.length" class="text-sm text-slate-400">Keine Treffer.</p>
+    <p v-else-if="query.trim().length < 2" class="text-sm text-muted">Mindestens 2 Zeichen eingeben.</p>
+    <p v-else-if="!results.length" class="text-sm text-muted">Keine Treffer.</p>
     <ProductRow v-for="s in results" :key="s.product_key" :stat="s" />
 
     <NavBar />

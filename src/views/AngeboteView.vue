@@ -16,8 +16,12 @@ const filtered = computed(() => retailer.value ? offers.items.filter((o) => o.re
 
 <template>
   <div class="max-w-xl mx-auto p-4 pb-24 space-y-3">
-    <h1 class="text-xl font-bold">Alle Angebote</h1>
-    <select v-model="retailer" class="w-full border rounded-lg p-3">
+    <header>
+      <p class="label">Diese Woche</p>
+      <h1 class="text-xl font-bold">Alle Angebote</h1>
+    </header>
+
+    <select v-model="retailer" class="w-full karte p-3 outline-none focus:border-deep">
       <option value="">Alle Händler</option>
       <option v-for="r in retailers" :key="r" :value="r">{{ r }}</option>
     </select>

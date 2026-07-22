@@ -15,12 +15,22 @@ const priceParts = computed(() => {
 </script>
 
 <template>
-  <router-link :to="`/produkt/${encodeURIComponent(stat.product_key)}`" class="block border rounded-xl p-3 bg-white">
-    <div class="flex justify-between items-center">
-      <p class="font-bold">{{ stat.product }} <span class="text-slate-400 font-normal">{{ stat.brand }}</span></p>
+  <!-- Aufbau wie OfferCard: Ware links, Preis rechts und dominant. -->
+  <router-link :to="`/produkt/${encodeURIComponent(stat.product_key)}`" class="karte flex items-stretch overflow-hidden">
+    <div class="flex-1 min-w-0 p-3">
+      <p class="font-semibold leading-snug truncate">{{ stat.product }}</p>
+      <p v-if="stat.brand" class="text-sm text-muted truncate">{{ stat.brand }}</p>
+      <p class="mt-1 text-xs" :class="stat.currently_active ? 'text-signal font-semibold' : 'text-muted'">
+        {{ stat.currently_active ? 'Im Angebot' : `Zuletzt ${datum(stat.last_valid_to)}` }}
+      </p>
+      <p v-if="priceParts" class="label mt-1 truncate">{{ priceParts }}</p>
     </div>
-    <p v-if="stat.currently_active" class="text-sm text-emerald-600">Im Angebot · {{ eur(stat.current_price) }}</p>
-    <p v-else class="text-sm text-slate-400">Zuletzt {{ datum(stat.last_valid_to) }}</p>
-    <p v-if="priceParts" class="text-xs text-slate-500">{{ priceParts }}</p>
+
+    <div
+      v-if="stat.currently_active"
+      class="shrink-0 flex flex-col items-end justify-center px-3 py-2 bg-paper border-l border-hair"
+    >
+      <p class="preis text-signal text-2xl leading-none">{{ eur(stat.current_price) }}</p>
+    </div>
   </router-link>
 </template>
