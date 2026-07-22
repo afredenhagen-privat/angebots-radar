@@ -19,13 +19,30 @@ const ladefehler = ref('')
 
 onMounted(async () => {
   try {
-    await Promise.all([wl.load(), offers.load()])
+    // Erst die Merkliste, dann gezielt deren Angebote — so ist der Merkzettel
+    // vollständig, statt an einer serverseitigen Zeilenobergrenze zu scheitern.
+    await wl.load()
+    await offers.loadForEntries(wl.items)
   } catch (e) {
     ladefehler.value = 'Daten konnten nicht geladen werden. Prüf deine Verbindung.'
   }
   // Auch nach einem Fehlschlag abonnieren, damit spätere Änderungen ankommen.
   wl.subscribe()
 })
+
+// Ändert sich die Merkliste (auch per Realtime vom anderen Handy), die
+// passenden Angebote nachladen.
+watch(
+  () => wl.items,
+  async (items) => {
+    try {
+      await offers.loadForEntries(items)
+    } catch {
+      ladefehler.value = 'Angebote konnten nicht geladen werden.'
+    }
+  },
+  { deep: true },
+)
 onUnmounted(() => wl.unsubscribe())
 
 /**
