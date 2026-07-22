@@ -101,6 +101,7 @@ const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
     </header>
 
     <p v-if="ladefehler" class="text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ ladefehler }}</p>
+    <p v-if="wl.error" class="text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ wl.error }}</p>
 
     <section class="space-y-1">
       <p class="label">Neuer Eintrag</p>
