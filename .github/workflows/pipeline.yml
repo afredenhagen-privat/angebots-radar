@@ -20,3 +20,26 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           ZIP_CODES: '97204,97070'
+
+      # Schlägt der Lauf fehl, meldet sich der Bot - sonst merkt man wochenlang
+      # nicht, dass keine Angebote mehr kommen. Optional: ohne gesetztes
+      # TELEGRAM_ALERT_CHAT_ID wird der Schritt einfach uebersprungen.
+      - name: Telegram-Alarm bei Fehlschlag
+        if: failure()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$ALERT_CHAT_ID" ]; then
+            echo "TELEGRAM_ALERT_CHAT_ID oder TELEGRAM_BOT_TOKEN fehlt - Alarm uebersprungen."
+            exit 0
+          fi
+          TEXT="⚠️ Angebots-Radar: Der Pipeline-Lauf ist fehlgeschlagen.
+
+          Log ansehen: $RUN_URL"
+          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${ALERT_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            -o /dev/null
+          echo "Fehler-Alarm an Telegram gesendet."

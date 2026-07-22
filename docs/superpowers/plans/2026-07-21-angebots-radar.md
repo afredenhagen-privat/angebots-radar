@@ -1559,3 +1559,21 @@ Diese Punkte wurden bei der Implementierung/Review gegenüber dem ursprüngliche
 4. **CI Node 22** — beide Workflows nutzen Node 22 (nicht 20), da `@supabase/supabase-js` Node ≥22 verlangt.
 5. **`package-lock.json` committed** — erforderlich für `npm ci` in der CI.
 6. **`image_id = offer.id` ist beabsichtigt** — die Marktguru-CDN-Bild-URL nutzt genau die Offer-ID.
+
+### Nachträgliche Änderungen (2026-07-22)
+
+7. **Login auf Magic Link umgestellt** (statt geteiltem Login mit Passwort) — passend zum
+   Schwesterprojekt Vorratsmonster. Betrifft `src/supabase.js`, `src/stores/auth.js`,
+   `src/views/LoginView.vue`. Wichtige Details:
+   - **`flowType: 'pkce'`** im Supabase-Client ist zwingend: Im Standard-Flow käme der Token als
+     `#access_token=...` im Hash zurück und würde mit dem Hash-Router (`#/angebote`) kollidieren.
+     Mit PKCE kommt stattdessen `?code=...` im Query-String.
+   - **`shouldCreateUser: false`** beim `signInWithOtp` + Self-Signup in Supabase abgeschaltet.
+     Ohne das könnte sich jede beliebige E-Mail einloggen und hätte wegen
+     `using (true)` in den RLS-Policies sofort vollen Datenzugriff.
+   - **Redirect-URL** muss in Supabase unter *Authentication → URL Configuration* freigegeben sein.
+   - `LoginView` beobachtet die Session und leitet nach dem Magic-Link-Rücksprung selbst weiter —
+     der Router-Guard allein griffe erst bei der nächsten Navigation.
+8. **Fehler-Alarm im Cron** — `pipeline.yml` hat einen `if: failure()`-Schritt, der bei einem
+   fehlgeschlagenen Lauf eine Telegram-Nachricht an `TELEGRAM_ALERT_CHAT_ID` schickt (optionales
+   Secret; fehlt es, wird der Schritt übersprungen).

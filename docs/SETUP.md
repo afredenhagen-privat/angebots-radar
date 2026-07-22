@@ -41,19 +41,44 @@ Du solltest „Success. No rows returned" sehen.
 
 ---
 
-## Schritt 3 — Euren gemeinsamen Haushalts-Login anlegen
+## Schritt 3 — Login einrichten (Magic Link)
 
-Ihr teilt euch **einen** Login — das ist bewusst so, damit ihr automatisch dieselbe Merkliste seht.
+Der Login läuft **passwortlos per Magic Link**: Ihr gebt eure E-Mail ein, bekommt eine Mail, klickt den Link — fertig. Jeder von euch nutzt seine **eigene** E-Mail-Adresse; ihr seht trotzdem beide dieselbe Merkliste.
+
+### 3a — Eure beiden Nutzer anlegen
 
 1. Linkes Menü → **Authentication** → **Users**.
-2. Klick auf **Add user** → **Create new user**.
-3. Fülle aus:
-   - **Email:** eine Adresse, die ihr beide kennt (z.B. eine gemeinsame oder deine).
-   - **Password:** ein Passwort, das ihr beide bekommt. **Merk es dir** — damit loggt ihr euch später in der App ein.
-   - **Auto Confirm User:** ✅ **anhaken** (sonst müsst ihr erst eine Bestätigungsmail klicken).
-4. **Create user** klicken.
+2. **Add user** → **Create new user**. Fülle aus:
+   - **Email:** deine E-Mail-Adresse.
+   - **Password:** irgendein zufälliges Passwort (wird nie gebraucht, der Login läuft über den Magic Link — trag einfach was Langes ein).
+   - **Auto Confirm User:** ✅ **anhaken**.
+3. **Create user** klicken.
+4. **Das Ganze ein zweites Mal** — diesmal mit der E-Mail-Adresse deiner Verlobten.
 
-✅ **Check:** Der User steht in der Liste und hat in der Spalte *Last sign in* noch nichts, aber ist bestätigt (kein „Waiting for verification").
+### 3b — Self-Signup abschalten ⚠️ (wichtig!)
+
+Ohne diesen Schritt könnte sich **jede beliebige E-Mail-Adresse** einen Magic Link schicken lassen und käme an eure Daten — denn die Sicherheitsregeln geben jedem eingeloggten Nutzer vollen Zugriff.
+
+1. **Authentication** → **Sign In / Providers** (in manchen Versionen: **Providers** → **Email**).
+2. Schalte **„Allow new users to sign up"** (bzw. *Enable Sign Ups*) **aus**.
+
+> Die App schickt zusätzlich `shouldCreateUser: false` mit — doppelt gesichert. Wer nicht in Schritt 3a angelegt wurde, bekommt die Meldung „Diese E-Mail ist nicht freigeschaltet".
+
+### 3c — Redirect-URL freigeben ⚠️ (sonst funktioniert der Magic Link nicht!)
+
+Supabase leitet nach dem Klick nur auf Adressen weiter, die vorher freigegeben sind.
+
+1. **Authentication** → **URL Configuration**.
+2. **Site URL** setzen auf:
+   ```
+   https://afredenhagen-privat.github.io/angebots-radar/
+   ```
+3. Unter **Redirect URLs** → **Add URL** dieselbe Adresse eintragen. Ergänze zusätzlich für lokales Testen:
+   ```
+   http://localhost:5173/angebots-radar/
+   ```
+
+✅ **Check:** Unter *Users* stehen **zwei** bestätigte Nutzer, Sign-Ups sind aus, und unter *URL Configuration* stehen Site-URL und Redirect-URL.
 
 ---
 
@@ -120,7 +145,17 @@ Hier kommen alle Zugangsdaten sicher hinterlegt rein.
 
    > Ja, die URL kommt zweimal rein — einmal für die Pipeline (`SUPABASE_URL`) und einmal für den App-Build (`VITE_...`). Das ist Absicht.
 
-✅ **Check:** Unter *Repository secrets* stehen genau diese fünf Einträge.
+### Optional: Fehler-Alarm einrichten
+
+Damit du eine Telegram-Nachricht bekommst, wenn der tägliche Lauf fehlschlägt (sonst merkst du wochenlang nicht, dass keine Angebote mehr kommen):
+
+- Lege ein **sechstes** Secret an: `TELEGRAM_ALERT_CHAT_ID` mit **deiner** Telegram-Chat-ID.
+- **Wie du deine Chat-ID findest:** Am einfachsten nach dem ersten erfolgreichen Pipeline-Lauf (Schritt 9) — dann steht sie in Supabase in der Tabelle `telegram_subscribers`. Alternativ schreibst du in Telegram dem Bot **@userinfobot**, der antwortet dir mit deiner ID (eine Zahl wie `123456789`).
+- Ohne dieses Secret wird der Alarm-Schritt einfach übersprungen — der Workflow läuft trotzdem normal.
+
+> GitHub schickt dir bei fehlgeschlagenen Workflows ohnehin eine E-Mail. Der Telegram-Alarm ist die auffälligere Variante.
+
+✅ **Check:** Unter *Repository secrets* stehen mindestens die fünf Pflicht-Einträge (plus optional `TELEGRAM_ALERT_CHAT_ID`).
 
 ---
 
@@ -184,7 +219,14 @@ Jetzt füllen wir die Datenbank zum ersten Mal.
 ## Schritt 10 — App auf beiden Handys installieren
 
 1. Öffnet auf **beiden** Handys **https://afredenhagen-privat.github.io/angebots-radar/**
-2. Loggt euch mit der **E-Mail und dem Passwort aus Schritt 3** ein (beide dieselben Daten).
+2. **Einloggen per Magic Link** — jeder auf seinem eigenen Handy:
+   - Eigene E-Mail-Adresse eintippen (die aus Schritt 3a) → **Magic-Link senden**.
+   - Die Mail von Supabase öffnen — **wichtig: auf demselben Handy**, auf dem du dich einloggen willst.
+   - Auf den Link tippen → die App öffnet sich und du bist angemeldet. Kein Passwort nötig.
+
+   > **Kommt keine Mail?** Schau im Spam-Ordner. Kommt „Diese E-Mail ist nicht freigeschaltet", hast du eine Adresse benutzt, die in Schritt 3a nicht angelegt wurde.
+   >
+   > **Link führt auf eine Fehlerseite?** Dann fehlt die Redirect-URL aus Schritt 3c.
 3. Ihr solltet den Merkzettel mit „Butter" und den Treffern sehen.
 4. **Zum Startbildschirm hinzufügen:**
    - **Android (Chrome):** Menü ⋮ oben rechts → *App installieren* bzw. *Zum Startbildschirm hinzufügen*
