@@ -224,9 +224,15 @@ Jetzt füllen wir die Datenbank zum ersten Mal.
    - Die Mail von Supabase öffnen — **wichtig: auf demselben Handy**, auf dem du dich einloggen willst.
    - Auf den Link tippen → die App öffnet sich und du bist angemeldet. Kein Passwort nötig.
 
-   > **Kommt keine Mail?** Schau im Spam-Ordner. Kommt „Diese E-Mail ist nicht freigeschaltet", hast du eine Adresse benutzt, die in Schritt 3a nicht angelegt wurde.
+   > **Kommt keine Mail?** Schau im Spam-Ordner. Supabase' eingebauter Mailversand ist im Free-Tier limitiert (wenige Mails pro Stunde) — bei mehreren Versuchen hintereinander einfach kurz warten.
+   >
+   > Kommt „Diese E-Mail ist nicht freigeschaltet", hast du eine Adresse benutzt, die in Schritt 3a nicht angelegt wurde.
    >
    > **Link führt auf eine Fehlerseite?** Dann fehlt die Redirect-URL aus Schritt 3c.
+   >
+   > **Du klickst den Link, aber die Homescreen-App bleibt ausgeloggt (v.a. iPhone):** Das ist kein Fehler in der App. Eine installierte PWA hat auf iOS einen **eigenen Speicher**, getrennt von Safari — der Link öffnet aber immer in Safari, also landet die Anmeldung dort statt in der App. Auf Android tritt das normalerweise nicht auf.
+   >
+   > **Auswege:** Nutz die App auf dem betroffenen Handy einfach über **Safari** (Lesezeichen statt Homescreen-Icon) — funktional identisch. Oder sag Claude Bescheid: Der Passwort-Login lässt sich mit wenig Aufwand als Alternative nachrüsten (der Code liegt noch in der Git-History).
 3. Ihr solltet den Merkzettel mit „Butter" und den Treffern sehen.
 4. **Zum Startbildschirm hinzufügen:**
    - **Android (Chrome):** Menü ⋮ oben rechts → *App installieren* bzw. *Zum Startbildschirm hinzufügen*
