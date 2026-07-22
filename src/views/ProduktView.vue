@@ -38,15 +38,19 @@ onMounted(async () => {
         <div class="karte p-3 space-y-1.5">
           <div class="flex justify-between items-baseline">
             <span class="label">Normalpreis</span>
-            <span class="preis text-lg">{{ eur(stat.regular_price) }}</span>
+            <!-- Ohne Streichpreis in den Daten bleibt hier "—" stehen statt
+                 einer leeren Zeile, die wie ein Fehler aussieht. -->
+            <span class="preis text-lg" :class="stat.regular_price == null ? 'text-muted' : ''">
+              {{ eur(stat.regular_price) || '—' }}
+            </span>
           </div>
           <div class="flex justify-between items-baseline">
             <span class="label">Im Angebot meist</span>
-            <span class="preis text-lg">{{ eur(stat.typical_price) }}</span>
+            <span class="preis text-lg">{{ eur(stat.typical_price) || "—" }}</span>
           </div>
           <div class="flex justify-between items-baseline">
             <span class="label">Tiefpreis</span>
-            <span class="preis text-lg">{{ eur(stat.lowest_price) }}</span>
+            <span class="preis text-lg">{{ eur(stat.lowest_price) || "—" }}</span>
           </div>
 
           <PreisSkala
