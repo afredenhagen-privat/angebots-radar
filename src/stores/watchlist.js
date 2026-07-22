@@ -11,7 +11,7 @@ export const useWatchlist = defineStore('watchlist', () => {
   async function load() {
     const { data, error } = await supabase.from('watchlist').select('*').order('created_at')
     if (error) throw error
-    items.value = data
+    items.value = data ?? []
   }
 
   function subscribe() {
@@ -24,17 +24,22 @@ export const useWatchlist = defineStore('watchlist', () => {
     if (channel) { supabase.removeChannel(channel); channel = null }
   }
 
+  // Nach Änderungen direkt neu laden statt auf den Realtime-Rückweg zu warten —
+  // sonst wirkt das Antippen eines Vorschlags folgenlos.
   async function add(term, targetPrice = null) {
     const { error } = await supabase.from('watchlist').insert({ term, target_price: targetPrice })
     if (error) throw error
+    await load()
   }
   async function remove(id) {
     const { error } = await supabase.from('watchlist').delete().eq('id', id)
     if (error) throw error
+    await load()
   }
   async function setTarget(id, targetPrice) {
     const { error } = await supabase.from('watchlist').update({ target_price: targetPrice }).eq('id', id)
     if (error) throw error
+    await load()
   }
 
   return { items, load, subscribe, unsubscribe, add, remove, setTarget }

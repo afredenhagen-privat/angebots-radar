@@ -1,3 +1,43 @@
+/* src/style.css */
+@import '@fontsource/archivo-narrow/500.css';
+@import '@fontsource/archivo-narrow/600.css';
+@import '@fontsource/archivo-narrow/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+}
+
+@layer components {
+  /* Preise wie auf einem Regaletikett: Schmalschnitt, Tabellenziffern, eng
+     gesetzt. Tabellenziffern sind wichtig, damit Preise in Listen senkrecht
+     bündig stehen. */
+  .preis {
+    @apply font-display font-bold tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Kleines Versal-Label über Werten — die Sprache von Etiketten. */
+  .label {
+    @apply text-[10px] uppercase tracking-label text-muted font-semibold;
+  }
+
+  .karte {
+    @apply bg-card border border-hair rounded-lg;
+  }
+}
+
+/* Bewegung nur, wenn der Nutzer sie nicht abbestellt hat. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
