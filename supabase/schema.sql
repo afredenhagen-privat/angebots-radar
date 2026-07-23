@@ -77,7 +77,9 @@ alter publication supabase_realtime add table watchlist;
 -- Preisstatistik je Produkt über die letzten 365 Tage.
 -- Speist Suche, Produkt-Detail und die Suchhilfe beim Hinzufügen.
 -- security_invoker => die RLS-Regeln von offers greifen weiterhin.
-create or replace view product_stats
+drop view if exists product_stats;
+
+create view product_stats
 with (security_invoker = on) as
 select
   o.product_key,

@@ -36,7 +36,12 @@ where unit_old_price is null and old_price is not null;
 
 create index if not exists offers_unit_price_idx on offers (unit_price);
 
-create or replace view product_stats
+-- Erst löschen: "create or replace view" kann Spalten weder umbenennen noch
+-- verschieben, und wir fügen `unit` in die Mitte ein. Ein View hält keine
+-- Daten, das Löschen ist also gefahrlos.
+drop view if exists product_stats;
+
+create view product_stats
 with (security_invoker = on) as
 select
   o.product_key,
