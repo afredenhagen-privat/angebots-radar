@@ -30,4 +30,12 @@ export const CATEGORIES = [
   'Spülmittel', 'Waschmittel', 'Weichspüler', 'Toilettenpapier', 'Küchenrolle',
   'Müllbeutel', 'Zahnpasta', 'Duschgel', 'Shampoo', 'Deo', 'Windeln',
   'Katzenfutter', 'Hundefutter',
+
+  // Wortstämme. Die Suche greift auf Teilwörter: "vegan" findet auch
+  // "Vegane Frikadellen". Kurze Stämme decken deshalb viele Varianten ab,
+  // die eine Liste vollständiger Produktnamen niemals erwischt.
+  'vegan', 'veget', 'bio', 'frikadell', 'bratling', 'burger', 'schnitzel',
+  'tofu', 'seitan', 'falafel', 'hummus', 'aufschnitt', 'aufstrich',
+  'grill', 'salat', 'suppe', 'soße', 'gewürz', 'snack', 'riegel',
+  'drink', 'smoothie', 'protein', 'laktosefrei', 'glutenfrei', 'zero',
 ]

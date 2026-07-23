@@ -86,10 +86,36 @@ export const useOffers = defineStore('offers', () => {
     gesamt.value = count ?? items.value.length
   }
 
+  /**
+   * Durchsucht die aktuell gültigen Angebote serverseitig.
+   *
+   * Bewusst NICHT im Browser filtern: Der Stöber-Tab lädt nur einen gedeckelten
+   * Ausschnitt, eine lokale Filterung würde also nur diesen Ausschnitt
+   * durchsuchen und den Rest stillschweigend übersehen.
+   */
+  async function searchCurrent(q) {
+    const term = String(q ?? '').replace(/[,()*%\\]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (term.length < 2) return loadBrowse()
+    const { data, error: err, count } = await supabase
+      .from('offers')
+      .select('*', { count: 'exact' })
+      .or(`product.ilike.%${term}%,brand.ilike.%${term}%`)
+      .gte('valid_to', jetzt())
+      .order('price')
+      .limit(200)
+    if (err) {
+      error.value = 'Suche fehlgeschlagen.'
+      throw err
+    }
+    error.value = null
+    items.value = dedupeOffers(data ?? [])
+    gesamt.value = count ?? items.value.length
+  }
+
   /** Treffer für einen Merkzettel-Eintrag (Korb oder alter Freitext). */
   function forEntry(entry) {
     return items.value.filter((o) => offerMatchesEntry(o, entry))
   }
 
-  return { items, gesamt, error, loadForEntries, loadBrowse, forEntry }
+  return { items, gesamt, error, loadForEntries, loadBrowse, searchCurrent, forEntry }
 })

@@ -1,6 +1,6 @@
 // pipeline/run.js
 import { admin } from './supabaseAdmin.js'
-import { fetchKeys, searchOffers, sleep } from './marktguru/client.js'
+import { fetchKeys, fetchCategories, searchOffers, sleep } from './marktguru/client.js'
 import { normalizeOffer } from './marktguru/normalize.js'
 import { offerMatchesEntry } from '../shared/matching.js'
 import { dedupeOffers } from '../shared/dedupe.js'
@@ -21,11 +21,28 @@ async function main() {
     console.log(`  · "${w.term}": ${n ? `${n} Produkt(e) im Korb` : 'Freitext'}${w.target_price != null ? `, Limit ${w.target_price} €` : ''}`)
   }
 
-  // 2. Begriffsliste = Merkzettel-Begriffe ∪ Kategorien
-  const terms = [...new Set([...watchlist.map((w) => w.term), ...CATEGORIES])]
+  // 2. Begriffsliste aufbauen.
+  //
+  // Die API kann nur Volltextsuche — wir bekommen also ausschliesslich das,
+  // wonach wir fragen. Eine handgepflegte Liste laesst zwangslaeufig Luecken
+  // (so fehlten z.B. "Vegane Frikadellen"). Deshalb zusaetzlich Marktgurus
+  // eigene Kategorieliste, die sich von selbst aktuell haelt.
+  const keys = await fetchKeys()
+  let apiKategorien = []
+  try {
+    apiKategorien = await fetchCategories(keys)
+    console.log(`Marktguru-Kategorien geladen: ${apiKategorien.length}`)
+  } catch (e) {
+    console.warn(`Kategorien nicht ladbar (${e.message}) — nur kuratierte Liste`)
+  }
+  const terms = [...new Set([
+    ...watchlist.map((w) => w.term),
+    ...CATEGORIES,
+    ...apiKategorien,
+  ].map((t) => String(t).trim()).filter((t) => t.length >= 2))]
+  console.log(`Suchbegriffe: ${terms.length} × ${ZIPS.length} PLZ`)
 
   // 3. Angebote ziehen (gedrosselt, mit Rate-Limit-Backoff)
-  const keys = await fetchKeys()
   const offersById = new Map()
   let rateLimitStreak = 0
   let aborted = false
@@ -47,7 +64,7 @@ async function main() {
           await sleep(5000)
         }
       }
-      await sleep(400) // Rate-Limit schonen
+      await sleep(300) // Rate-Limit schonen (Backoff faengt 456er ab)
     }
   }
   const nowIso = new Date().toISOString()
