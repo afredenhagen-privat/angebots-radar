@@ -59,6 +59,25 @@ export const FOOD_PARENT_IDS = new Set([
 ])
 
 /**
+ * Einzelne Blatt-Kategorien, die trotz erlaubter Elternkategorie raus müssen.
+ *
+ * Elternkategorie 50 enthält Spülmittel und Waschmittel (wollen wir), aber
+ * auch Küchenzubehör und Küchentextilien — darüber landeten Salatschleudern,
+ * Brotkörbe und Besteckkästen von Möbelhäusern im Radar.
+ */
+const AUSNAHMEN = new Set([
+  250, // Küchenzubehör
+  251, // Küchentextilien
+])
+
+/**
+ * Händler, die keine Lebensmittelversorger sind. Selbst ihre "Lebensmittel"
+ * sind Restaurantangebote (XXXLutz: "Feierabendbier", "Hauspalatschinken"),
+ * keine Einkäufe für zuhause.
+ */
+const AUSGESCHLOSSENE_HAENDLER = new Set(['xxxlutz', 'opti wohnwelt'])
+
+/**
  * Ist das Angebot für uns relevant?
  *
  * Strikt: ohne erkennbare Kategorie fliegt es raus. Ursprünglich war die
@@ -67,6 +86,11 @@ export const FOOD_PARENT_IDS = new Set([
  * Nachsicht schützte also nichts und liess nur Ausreisser durch.
  */
 export function istRelevant(offer) {
+  const haendler = offer?.retailer?.trim().toLowerCase()
+  if (haendler && AUSGESCHLOSSENE_HAENDLER.has(haendler)) return false
+
+  if (offer?.category_id != null && AUSNAHMEN.has(offer.category_id)) return false
+
   const parent = offer?.category_parent_id
   if (parent == null) return false
   return FOOD_PARENT_IDS.has(parent)

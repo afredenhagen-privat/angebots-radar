@@ -95,8 +95,12 @@ export const useOffers = defineStore('offers', () => {
       .select('*', { count: 'exact' })
       .gte('valid_to', jetzt())
     if (retailer) q = q.eq('retailer', retailer)
+    // Alphabetisch, NICHT nach Preis: quer durch alle Warengruppen liesse sich
+    // 0,01 €/Stk (Taschentuch) nicht sinnvoll mit 20 €/kg (Steak) vergleichen.
+    // Innerhalb einer Suche ist die Einheit einheitlich — dort wird nach
+    // Grundpreis sortiert.
     const { data, error: err, count } = await q
-      .order('unit_price')
+      .order('product')
       .limit(BROWSE_LIMIT)
     if (err) {
       error.value = 'Angebote konnten nicht geladen werden.'

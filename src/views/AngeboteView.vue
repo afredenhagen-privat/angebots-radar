@@ -51,7 +51,7 @@ const gekuerzt = computed(() => offers.gesamt > offers.items.length)
       {{ offers.gesamt }} Treffer für „{{ suche.trim() }}"<span v-if="gekuerzt">, davon {{ offers.items.length }} angezeigt</span>
     </p>
     <p v-else-if="gekuerzt" class="text-xs text-muted">
-      Zeigt {{ offers.items.length }} von {{ offers.gesamt }} Angeboten, günstigste zuerst — nutz die Suche, um gezielt etwas zu finden.
+      Zeigt {{ offers.items.length }} von {{ offers.gesamt }} Angeboten — nutz die Suche oder den Händlerfilter, um gezielt etwas zu finden.
     </p>
 
     <p v-if="offers.error" class="text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ offers.error }}</p>

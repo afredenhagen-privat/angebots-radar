@@ -29,6 +29,23 @@ describe('istRelevant', () => {
     expect(istRelevant({})).toBe(false)
   })
 
+  it('wirft Hausrat raus, der unter einer erlaubten Elternkategorie hängt', () => {
+    // Elternkategorie 50 enthält Spülmittel (wollen wir) UND Küchenzubehör
+    // (wollen wir nicht) — darüber kamen Salatschleudern und Brotkörbe rein.
+    expect(istRelevant({ category_parent_id: 50, category_id: 418 })).toBe(true) // Spülmittel
+    expect(istRelevant({ category_parent_id: 50, category_id: 419 })).toBe(true) // Waschmittel
+    expect(istRelevant({ category_parent_id: 50, category_id: 250 })).toBe(false) // Küchenzubehör
+    expect(istRelevant({ category_parent_id: 50, category_id: 251 })).toBe(false) // Küchentextilien
+  })
+
+  it('wirft Möbelhäuser komplett raus', () => {
+    // Deren "Lebensmittel" sind Restaurantangebote, keine Einkäufe.
+    expect(istRelevant({ retailer: 'XXXLutz', category_parent_id: 70 })).toBe(false)
+    expect(istRelevant({ retailer: 'Opti Wohnwelt', category_parent_id: 107 })).toBe(false)
+    // Die Tankstelle bleibt: dort gibt es echte Getränkeangebote.
+    expect(istRelevant({ retailer: 'RAN Tankstelle', category_parent_id: 69 })).toBe(true)
+  })
+
   it('deckt die wichtigsten Lebensmittelgruppen ab', () => {
     for (const id of [103, 104, 106, 107, 149, 191, 193]) {
       expect(FOOD_PARENT_IDS.has(id)).toBe(true)
