@@ -61,12 +61,13 @@ export const FOOD_PARENT_IDS = new Set([
 /**
  * Ist das Angebot für uns relevant?
  *
- * Bewusst durchlässig: Angebote OHNE erkennbare Kategorie werden behalten.
- * Lieber ein Non-Food-Ausreisser zu viel als ein echtes Lebensmittel zu
- * verlieren, nur weil die Quelle keine Kategorie mitgeliefert hat.
+ * Strikt: ohne erkennbare Kategorie fliegt es raus. Ursprünglich war die
+ * Regel durchlässig, um keine Lebensmittel zu verlieren — eine Messung über
+ * 728 Angebote ergab aber, dass **kein einziges** ohne Kategorie kommt. Die
+ * Nachsicht schützte also nichts und liess nur Ausreisser durch.
  */
 export function istRelevant(offer) {
   const parent = offer?.category_parent_id
-  if (parent == null) return true
+  if (parent == null) return false
   return FOOD_PARENT_IDS.has(parent)
 }

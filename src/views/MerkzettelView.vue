@@ -174,7 +174,8 @@ const markeVon = (p) => p.stat?.brand ?? p.key.split('|')[0]
         </div>
         <p class="text-[11px] text-muted -mt-1">
           <template v-if="k.it.target_price != null">
-            Telegram meldet nur unter {{ k.it.target_price }} €. Hier siehst du alle Angebote.
+            Telegram meldet nur, wenn der Packungspreis unter {{ k.it.target_price }} € liegt.
+            Hier siehst du alle Angebote.
           </template>
           <template v-else>Ohne Limit meldet Telegram jedes neue Angebot.</template>
         </p>

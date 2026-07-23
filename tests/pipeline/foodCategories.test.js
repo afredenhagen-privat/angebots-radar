@@ -22,10 +22,11 @@ describe('istRelevant', () => {
     expect(istRelevant({ category_parent_id: 124 })).toBe(false) // Unterhaltungselektronik
   })
 
-  it('behält Angebote ohne Kategorie', () => {
-    // Lieber ein Ausreisser zu viel als ein echtes Lebensmittel verlieren.
-    expect(istRelevant({ category_parent_id: null })).toBe(true)
-    expect(istRelevant({})).toBe(true)
+  it('wirft Angebote ohne Kategorie raus', () => {
+    // Gemessen über 728 Angebote: kein einziges kommt ohne Kategorie. Wer
+    // hier keine hat, ist ein Ausreisser — kein schuetzenswertes Lebensmittel.
+    expect(istRelevant({ category_parent_id: null })).toBe(false)
+    expect(istRelevant({})).toBe(false)
   })
 
   it('deckt die wichtigsten Lebensmittelgruppen ab', () => {
