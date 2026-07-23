@@ -4,12 +4,16 @@ const eur = (n) => Number(n).toFixed(2).replace('.', ',')
 const MAX_ZEILEN = 3
 
 function preisZeile(offer) {
-  const unit = offer.unit ? `/${offer.unit}` : ''
-  const price = offer.price != null ? `${eur(offer.price)} €${unit}` : 'Preis?'
-  const was = offer.old_price != null ? ` (statt ${eur(offer.old_price)} €)` : ''
+  // `price` ist der Packungspreis. Der Grundpreis kommt separat dazu — die
+  // Einheit an den Packungspreis zu haengen waere schlicht falsch.
+  const price = offer.price != null ? `${eur(offer.price)} €` : 'Preis?'
+  const grund = offer.reference_price != null && offer.unit
+    ? ` (${eur(offer.reference_price)} €/${offer.unit})`
+    : ''
+  const was = offer.old_price != null ? ` statt ${eur(offer.old_price)} €` : ''
   const brand = offer.brand ? ` ${offer.brand}` : ''
   const retailer = offer.retailer ? ` · ${offer.retailer}` : ''
-  return `${price}${was} · ${offer.product ?? ''}${brand}${retailer}`.trim()
+  return `${price}${grund}${was} · ${offer.product ?? ''}${brand}${retailer}`.trim()
 }
 
 function bis(iso) {
@@ -24,7 +28,9 @@ function bis(iso) {
  * schaltet ihn ab.
  */
 export function formatDigest(watch, offers) {
-  const sorted = [...offers].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))
+  // Nach Grundpreis sortieren, damit "guenstigstes" ueber Gebindegroessen hinweg stimmt.
+  const basis = (o) => o.unit_price ?? o.price ?? Infinity
+  const sorted = [...offers].sort((a, b) => basis(a) - basis(b))
   const anzahl = sorted.length
   const kopf = `🛒 ${watch.term} — ${anzahl} ${anzahl === 1 ? 'neues Angebot' : 'neue Angebote'}`
 

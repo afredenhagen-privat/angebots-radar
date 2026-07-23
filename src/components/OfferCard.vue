@@ -14,8 +14,26 @@ const props = defineProps({
 
 const bis = (iso) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '')
 
+/**
+ * Der Grundpreis (€/kg, €/l) — nur anzeigen, wenn Marktguru ihn liefert.
+ * `price` ist der Packungspreis; die Einheit gehört an den Grundpreis, sonst
+ * behaupten wir "1,99 €/kg", wo in Wahrheit 24,88 €/kg gilt.
+ */
+const grundpreis = computed(() => {
+  const o = props.offer
+  if (o.reference_price == null || !o.unit) return null
+  return `${eur(o.reference_price)}/${o.unit}`
+})
+
+// Urteil auf Basis des Grundpreises, verglichen mit ABGESCHLOSSENEN Zeiträumen.
 const lage = computed(() =>
-  props.stat ? preislage(props.offer.price, props.stat.lowest_price, props.stat.regular_price) : null,
+  props.stat
+    ? preislage(
+        props.offer.unit_price ?? props.offer.price,
+        props.stat.lowest_price_past,
+        props.stat.regular_price,
+      )
+    : null,
 )
 
 const ziel = computed(() =>
@@ -39,17 +57,18 @@ const ziel = computed(() =>
         <span v-if="offer.valid_to"> · bis {{ bis(offer.valid_to) }}</span>
       </p>
       <!-- Nur hervorheben, wenn es wirklich ein guter Preis ist. -->
-      <p v-if="lage?.gut" class="mt-1 inline-block text-[10px] font-bold uppercase tracking-label text-card bg-signal px-1.5 py-0.5 rounded">
+      <p
+        v-if="lage?.gut"
+        class="mt-1 inline-block text-[10px] font-bold uppercase tracking-label text-card bg-signal px-1.5 py-0.5 rounded"
+      >
         {{ lage.urteil }}
       </p>
     </div>
 
-    <div class="shrink-0 flex flex-col items-end justify-center px-3 py-2 bg-paper border-l border-hair">
+    <div class="shrink-0 flex flex-col items-end justify-center px-3 py-2 bg-paper border-l border-hair text-right">
       <p class="preis text-signal text-3xl leading-none">{{ eur(offer.price) }}</p>
-      <p class="mt-0.5 text-[11px] text-muted">
-        <span v-if="offer.unit">je {{ offer.unit }}</span>
-        <span v-if="offer.old_price" class="line-through ml-1">{{ eur(offer.old_price) }}</span>
-      </p>
+      <p v-if="offer.old_price" class="text-[11px] text-muted line-through">{{ eur(offer.old_price) }}</p>
+      <p v-if="grundpreis" class="text-[11px] text-muted">{{ grundpreis }}</p>
     </div>
   </component>
 </template>

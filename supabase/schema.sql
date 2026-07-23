@@ -6,10 +6,14 @@ create table if not exists offers (
   retailer text,
   product text,
   brand text,
-  price numeric,
-  old_price numeric,
-  reference_price numeric,
-  unit text,
+  price numeric,            -- Packungspreis
+  old_price numeric,        -- Streichpreis (Packung)
+  reference_price numeric,  -- Grundpreis je Einheit, von Marktguru
+  unit_price numeric,       -- Vergleichsbasis: Grundpreis, sonst Packungspreis
+  unit_old_price numeric,   -- Streichpreis auf dieselbe Basis umgerechnet
+  unit text,                -- Einheit des Grundpreises (kg, l, Stk)
+  category_id integer,
+  category_parent_id integer,
   valid_from timestamptz,
   valid_to timestamptz,
   zip_code text,
@@ -79,17 +83,22 @@ select
   o.product_key,
   (array_agg(o.product order by o.valid_from desc nulls last))[1] as product,
   (array_agg(o.brand   order by o.valid_from desc nulls last))[1] as brand,
-  count(*)::int                                          as observations,
-  min(o.valid_from)                                      as first_seen,
-  max(o.valid_to)                                        as last_valid_to,
-  min(o.price)                                           as lowest_price,
-  percentile_cont(0.5) within group (order by o.price)     as typical_price,
-  percentile_cont(0.5) within group (order by o.old_price) as regular_price,
-  bool_or(o.valid_to >= now())                           as currently_active,
-  min(o.price) filter (where o.valid_to >= now())        as current_price
+  (array_agg(o.unit    order by o.valid_from desc nulls last))[1] as unit,
+  count(*)::int                                               as observations,
+  min(o.valid_from)                                           as first_seen,
+  max(o.valid_to)                                             as last_valid_to,
+  min(o.unit_price)                                           as lowest_price,
+  -- Nur abgeschlossene Zeiträume: sonst vergleicht sich das laufende
+  -- Angebot mit sich selbst und ist zwangsläufig immer "Bestpreis".
+  min(o.unit_price) filter (where o.valid_to < now())         as lowest_price_past,
+  percentile_cont(0.5) within group (order by o.unit_price)     as typical_price,
+  percentile_cont(0.5) within group (order by o.unit_old_price) as regular_price,
+  bool_or(o.valid_to >= now())                                as currently_active,
+  min(o.unit_price) filter (where o.valid_to >= now())        as current_price,
+  min(o.price)      filter (where o.valid_to >= now())        as current_pack_price
 from offers o
 where o.product_key is not null
-  and o.price is not null
+  and o.unit_price is not null
   and o.valid_from >= now() - interval '365 days'
 group by o.product_key;
 

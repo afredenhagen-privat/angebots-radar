@@ -37,7 +37,7 @@ onMounted(async () => {
 
         <div class="karte p-3 space-y-1.5">
           <div class="flex justify-between items-baseline">
-            <span class="label">Normalpreis</span>
+            <span class="label">Normalpreis{{ stat.unit ? " je " + stat.unit : "" }}</span>
             <!-- Ohne Streichpreis in den Daten bleibt hier "—" stehen statt
                  einer leeren Zeile, die wie ein Fehler aussieht. -->
             <span class="preis text-lg" :class="stat.regular_price == null ? 'text-muted' : ''">
@@ -56,7 +56,7 @@ onMounted(async () => {
           <PreisSkala
             class="pt-2"
             :current="stat.current_price ?? stat.typical_price"
-            :low="stat.lowest_price"
+            :low="stat.lowest_price_past"
             :normal="stat.regular_price"
           />
 

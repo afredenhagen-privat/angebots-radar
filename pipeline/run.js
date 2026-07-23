@@ -6,9 +6,12 @@ import { offerMatchesEntry } from '../shared/matching.js'
 import { dedupeOffers } from '../shared/dedupe.js'
 import { formatDigest, sendMessage, harvestChatIds } from './telegram.js'
 import { CATEGORIES } from './categories.js'
+import { istRelevant } from './foodCategories.js'
 
 const ZIPS = (process.env.ZIP_CODES ?? '97204,97070').split(',').map((z) => z.trim())
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
+// Optionale Positivliste, z.B. RETAILERS="Lidl,Kaufland,REWE". Leer = alle.
+const RETAILERS = (process.env.RETAILERS ?? '').split(',').map((r) => r.trim().toLowerCase()).filter(Boolean)
 
 async function main() {
   // 1. Merkliste laden
@@ -70,10 +73,23 @@ async function main() {
   const nowIso = new Date().toISOString()
   // Erst über die ID entdoppeln (dasselbe Angebot bei mehreren Suchbegriffen),
   // dann inhaltlich (dasselbe Angebot je abgefragter PLZ mit eigener ID).
-  const roh = [...offersById.values()]
-  const offers = dedupeOffers(roh).map((o) => ({ ...o, fetched_at: nowIso }))
-  console.log(`Angebote gesammelt: ${offers.length}` +
-    (roh.length !== offers.length ? ` (${roh.length - offers.length} PLZ-Dubletten entfernt)` : ''))
+  const roh = dedupeOffers([...offersById.values()])
+
+  // Non-Food aussortieren: Discounter mischen Werkzeug-, Möbel- und
+  // Kleidungswochen in dieselbe Antwort.
+  const essbar = roh.filter(istRelevant)
+
+  // Optionale Händler-Positivliste. Leer = alle Händler behalten.
+  const gefiltert = RETAILERS.length
+    ? essbar.filter((o) => o.retailer && RETAILERS.includes(o.retailer.toLowerCase()))
+    : essbar
+
+  const offers = gefiltert.map((o) => ({ ...o, fetched_at: nowIso }))
+  console.log(
+    `Angebote: ${roh.length} gesammelt` +
+      ` → ${essbar.length} nach Non-Food-Filter` +
+      (RETAILERS.length ? ` → ${offers.length} nach Händlerfilter` : ''),
+  )
 
   // 4. Upsert in offers
   if (offers.length) {
