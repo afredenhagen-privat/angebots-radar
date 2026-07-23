@@ -6,7 +6,7 @@ import { offerMatchesEntry } from '../shared/matching.js'
 import { dedupeOffers } from '../shared/dedupe.js'
 import { formatDigest, sendMessage, harvestChatIds } from './telegram.js'
 import { CATEGORIES } from './categories.js'
-import { istRelevant } from './foodCategories.js'
+import { istRelevant, FOOD_PARENT_IDS, AUSGESCHLOSSENE_HAENDLER_NAMEN, AUSGESCHLOSSENE_KATEGORIEN } from './foodCategories.js'
 
 const ZIPS = (process.env.ZIP_CODES ?? '97204,97070').split(',').map((z) => z.trim())
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
@@ -95,6 +95,23 @@ async function main() {
   if (offers.length) {
     const { error } = await admin.from('offers').upsert(offers, { onConflict: 'id' })
     if (error) throw error
+  }
+
+  // 4b. Altbestand nach den HEUTIGEN Filterregeln bereinigen.
+  //
+  // Der Filter oben wirkt nur auf neu geschriebene Zeilen. Was frühere Läufe
+  // hereingeholt haben, bliebe sonst für immer stehen — und bei jeder
+  // Regeländerung bräuchte es eine neue Migration von Hand. Betrifft
+  // ausschliesslich aktuell gültige Angebote; abgelaufene sind die Historie.
+  const jetztIso = new Date().toISOString()
+  const aufraeumen = [
+    admin.from('offers').delete().gte('valid_to', jetztIso).in('retailer', AUSGESCHLOSSENE_HAENDLER_NAMEN),
+    admin.from('offers').delete().gte('valid_to', jetztIso).in('category_id', AUSGESCHLOSSENE_KATEGORIEN),
+    admin.from('offers').delete().gte('valid_to', jetztIso).not('category_parent_id', 'in', `(${[...FOOD_PARENT_IDS].join(',')})`),
+  ]
+  for (const p of aufraeumen) {
+    const { error: e } = await p
+    if (e) console.warn(`Aufräumen fehlgeschlagen: ${e.message}`)
   }
 
   // 5. Historie BEHALTEN. Abgelaufene Angebote bleiben stehen — sie *sind* die

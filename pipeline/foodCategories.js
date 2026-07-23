@@ -75,7 +75,12 @@ const AUSNAHMEN = new Set([
  * sind Restaurantangebote (XXXLutz: "Feierabendbier", "Hauspalatschinken"),
  * keine Einkäufe für zuhause.
  */
-const AUSGESCHLOSSENE_HAENDLER = new Set(['xxxlutz', 'opti wohnwelt'])
+export const AUSGESCHLOSSENE_HAENDLER_NAMEN = ['XXXLutz', 'Opti Wohnwelt']
+const AUSGESCHLOSSENE_HAENDLER = new Set(
+  AUSGESCHLOSSENE_HAENDLER_NAMEN.map((n) => n.toLowerCase()),
+)
+
+export const AUSGESCHLOSSENE_KATEGORIEN = [...AUSNAHMEN]
 
 /**
  * Ist das Angebot für uns relevant?
