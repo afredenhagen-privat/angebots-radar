@@ -10,6 +10,7 @@ const BROWSE_LIMIT = 1000
 export const useOffers = defineStore('offers', () => {
   const items = ref([])
   const gesamt = ref(0) // wie viele es insgesamt gäbe (für den Stöber-Tab)
+  const retailers = ref([])
   const error = ref(null)
 
   const jetzt = () => new Date().toISOString()
@@ -66,16 +67,36 @@ export const useOffers = defineStore('offers', () => {
   }
 
   /**
+   * Liste aller Händler mit aktuellen Angeboten.
+   *
+   * Eigene, schlanke Abfrage — würde man die Liste aus den geladenen Zeilen
+   * bauen, fehlten wegen der Deckelung alle Händler hinten im Alphabet
+   * (REWE, PENNY, Netto tauchten schlicht nicht in der Auswahl auf).
+   */
+  async function loadRetailers() {
+    const { data, error: err } = await supabase
+      .from('offers')
+      .select('retailer')
+      .gte('valid_to', jetzt())
+      .not('retailer', 'is', null)
+    if (err) return
+    retailers.value = [...new Set((data ?? []).map((o) => o.retailer))].sort()
+  }
+
+  /**
    * Lädt Angebote zum Stöbern — bewusst gedeckelt. `gesamt` sagt, wie viele
    * es insgesamt gäbe, damit die Anzeige ehrlich bleibt statt stillschweigend
-   * abzuschneiden.
+   * abzuschneiden. Der Händlerfilter wirkt serverseitig, sonst würde er nur
+   * den geladenen Ausschnitt durchsuchen.
    */
-  async function loadBrowse() {
-    const { data, error: err, count } = await supabase
+  async function loadBrowse(retailer = '') {
+    let q = supabase
       .from('offers')
       .select('*', { count: 'exact' })
       .gte('valid_to', jetzt())
-      .order('retailer')
+    if (retailer) q = q.eq('retailer', retailer)
+    const { data, error: err, count } = await q
+      .order('unit_price')
       .limit(BROWSE_LIMIT)
     if (err) {
       error.value = 'Angebote konnten nicht geladen werden.'
@@ -93,15 +114,17 @@ export const useOffers = defineStore('offers', () => {
    * Ausschnitt, eine lokale Filterung würde also nur diesen Ausschnitt
    * durchsuchen und den Rest stillschweigend übersehen.
    */
-  async function searchCurrent(q) {
+  async function searchCurrent(q, retailer = '') {
     const term = String(q ?? '').replace(/[,()*%\\]/g, ' ').replace(/\s+/g, ' ').trim()
-    if (term.length < 2) return loadBrowse()
-    const { data, error: err, count } = await supabase
+    if (term.length < 2) return loadBrowse(retailer)
+    let sq = supabase
       .from('offers')
       .select('*', { count: 'exact' })
       .or(`product.ilike.%${term}%,brand.ilike.%${term}%`)
       .gte('valid_to', jetzt())
-      .order('price')
+    if (retailer) sq = sq.eq('retailer', retailer)
+    const { data, error: err, count } = await sq
+      .order('unit_price')
       .limit(200)
     if (err) {
       error.value = 'Suche fehlgeschlagen.'
@@ -117,5 +140,5 @@ export const useOffers = defineStore('offers', () => {
     return items.value.filter((o) => offerMatchesEntry(o, entry))
   }
 
-  return { items, gesamt, error, loadForEntries, loadBrowse, searchCurrent, forEntry }
+  return { items, gesamt, retailers, error, loadForEntries, loadBrowse, loadRetailers, searchCurrent, forEntry }
 })
